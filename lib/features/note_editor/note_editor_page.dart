@@ -4,6 +4,7 @@ import 'package:forui/forui.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart' hide ContextExtensionss;
 
+import '../../shared/widgets/frosted_container.dart';
 import '../../theme/app_theme.dart';
 import 'note_editor_controller.dart';
 
@@ -89,7 +90,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
     );
   }
 
-  /// 圆形 outline 按钮（带阴影 + 半透明背景）。
+  /// 圆形毛玻璃按钮（背景模糊 + 半透明 + 细边框）。
   Widget _buildCircleBtn({
     required FThemeData theme,
     required VoidCallback onTap,
@@ -97,27 +98,35 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
   }) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: FrostedContainer(
         width: 40,
         height: 40,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: theme.colors.background.withValues(alpha: 0.88),
-          border: Border.all(color: theme.colors.border),
+        blurSigma: AppTheme.frost.blurSigma,
+        backgroundColor: theme.colors.background.withValues(
+          alpha: AppTheme.frost.btnAlpha,
         ),
+        border: Border.all(
+          color: theme.colors.border.withValues(alpha: 0.35),
+          width: AppTheme.frost.borderWidth,
+        ),
+        shape: BoxShape.circle,
+        alignment: Alignment.center,
         child: child,
       ),
     );
   }
 
-  /// 胶囊形 outline 按钮组（预览切换 + 保存，带阴影 + 半透明背景）。
+  /// 胶囊形毛玻璃按钮组（预览切换 + 保存，背景模糊 + 半透明）。
   Widget _buildCapsuleGroup(FThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(999),
-        color: theme.colors.background.withValues(alpha: 0.88),
-        border: Border.all(color: theme.colors.border),
+    return FrostedContainer(
+      blurSigma: AppTheme.frost.blurSigma,
+      backgroundColor: theme.colors.background.withValues(
+        alpha: AppTheme.frost.barAlpha,
+      ),
+      borderRadius: BorderRadius.circular(AppTheme.radius.full),
+      border: Border.all(
+        color: theme.colors.border.withValues(alpha: 0.35),
+        width: AppTheme.frost.borderWidth,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -144,7 +153,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
           Container(
             width: 0.5,
             height: 20,
-            color: theme.colors.border,
+            color: theme.colors.border.withValues(alpha: 0.35),
           ),
 
           // 保存 / 保存中
@@ -184,7 +193,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
   /// 生成无边框无背景的 FTextField 样式 delta。
   ///
   /// [textStyle] 覆盖输入内容字体，[hintStyle] 覆盖提示字体。
-  FTextFieldStyleDelta _bareStyle(
+  FTextFieldStyleDelta bareStyle(
     FThemeData theme, {
     required TextStyle textStyle,
     required TextStyle hintStyle,
@@ -229,7 +238,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
             controller: _titleTec,
             onChange: (v) => _controller.titleController.value = v.text,
           ),
-          style: _bareStyle(
+          style: bareStyle(
             theme,
             textStyle: theme.typography.xl3.copyWith(
               fontWeight: FontWeight.bold,
@@ -262,7 +271,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
             controller: _contentTec,
             onChange: (v) => _controller.contentController.value = v.text,
           ),
-          style: _bareStyle(
+          style: bareStyle(
             theme,
             textStyle: theme.typography.md.copyWith(
               height: 1.75,
@@ -299,7 +308,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
                     const SizedBox(width: 4),
                     Icon(
                       FLucideIcons.x,
-                      size: 11,
+                      size: 12,
                       color: theme.colors.mutedForeground,
                     ),
                   ],
@@ -307,22 +316,25 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
               ),
             ),
           ),
-          if (_controller.canGenerateTags)
-            GestureDetector(
-              onTap: _controller.isGeneratingTags
-                  ? null
-                  : () => _controller.generateTags(),
-              child: FBadge(
-                variant: .outline,
-                child: _controller.isGeneratingTags
-                    ? const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: FCircularProgress(size: .sm),
-                      )
-                    : const Icon(FLucideIcons.sparkles, size: 12),
-              ),
+
+          // AI 标签按钮——始终可见，生成中显示 loading
+          GestureDetector(
+            onTap: _controller.isGeneratingTags
+                ? null
+                : () => _controller.generateTags(),
+            child: FBadge(
+              variant: .outline,
+              child: _controller.isGeneratingTags
+                  ? const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: FCircularProgress(size: .sm),
+                    )
+                  : const Icon(FLucideIcons.sparkles, size: 12),
             ),
+          ),
+
+          // 手动添加标签按钮
           GestureDetector(
             onTap: () => _showAddTagDialog(context),
             child: FBadge(

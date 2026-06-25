@@ -8,13 +8,15 @@ import '../embedding/embedding_constants.dart';
 import '../storage/secure_storage_service.dart';
 
 /// LLM 标签生成服务——调用 OpenAI 兼容 Chat Completions API，
-/// 根据笔记内容生成 3-6 个简洁的中文标签。
+/// 根据笔记内容生成或审核标签。
 ///
 /// 需要在 main.dart 中通过 `Get.lazyPut(() => TagGenerationService())` 注册。
 class TagGenerationService extends GetxController {
   static const _systemPrompt = '''你是一个知识笔记标签生成助手。
-根据用户提供的笔记标题和内容，生成 3-6 个简洁的中文标签。
-标签应当概括笔记的核心主题、关键词或领域。
+根据用户提供的笔记标题和内容，完成标签任务。
+
+若笔记尚无标签：生成 3-6 个简洁的中文标签，概括笔记的核心主题、关键词或领域。
+若笔记已有标签：审核已有标签是否完整覆盖笔记内容。如完整，原样返回已有标签；如有遗漏，补充 1-3 个缺失标签，与已有标签合并返回。
 
 必须严格按照如下 JSON 格式返回，不要输出任何其他文字：
 {"tags": ["标签1", "标签2", "标签3"]}''';
@@ -28,10 +30,17 @@ class TagGenerationService extends GetxController {
     return key != null && key.isNotEmpty;
   }
 
-  /// 根据笔记标题和内容生成标签。
+  /// 根据笔记标题和内容生成或审核标签。
   ///
-  /// 返回标签名列表（3-6 个），失败时抛出异常。
-  Future<List<String>> generateTags(String title, String content) async {
+  /// [existingTags] 为已有的标签列表。非空时 AI 进入审核模式：
+  /// 标签完整则原样返回，有遗漏则补充缺失标签。
+  ///
+  /// 返回标签名列表，失败时抛出异常。
+  Future<List<String>> generateTags(
+    String title,
+    String content, {
+    List<String> existingTags = const [],
+  }) async {
     final apiKey = await _secureStorage.getApiKey();
     if (apiKey == null || apiKey.isEmpty) {
       throw Exception('API Key 未配置，请在设置中填写。');
@@ -52,7 +61,15 @@ class TagGenerationService extends GetxController {
     ));
 
     try {
-      final userMessage = '标题：$title\n\n内容：$content';
+      final String userMessage;
+      if (existingTags.isNotEmpty) {
+        userMessage = '标题：$title\n\n内容：$content\n\n'
+            '当前已有标签：${existingTags.join("、")}\n'
+            '请审核以上标签是否完整覆盖笔记内容。'
+            '若完整，请原样返回这些标签；若有遗漏，请补充缺失标签。';
+      } else {
+        userMessage = '标题：$title\n\n内容：$content';
+      }
 
       final response = await dio.post(
         '/chat/completions',

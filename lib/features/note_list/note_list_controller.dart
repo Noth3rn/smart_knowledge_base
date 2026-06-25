@@ -9,11 +9,16 @@ typedef NoteGroup = ({String title, List<Note> notes});
 class NoteListController extends GetxController {
   final _notes = <Note>[].obs;
   final _isLoading = false.obs;
+  final _tagsByNoteId = <int, List<String>>{}.obs;
 
   static const List<String> _kGroupOrder = ['今天', '昨天', '本周', '本月', '更早'];
 
   List<Note> get notes => _notes;
   bool get isLoading => _isLoading.value;
+
+  /// 获取某条笔记的标签列表。
+  List<String> tagsForNote(int noteId) =>
+      _tagsByNoteId[noteId] ?? const [];
 
   /// 将笔记按更新时间分组（今天/昨天/本周/本月/更早）。
   List<NoteGroup> get noteGroups {
@@ -64,11 +69,17 @@ class NoteListController extends GetxController {
     loadNotes();
   }
 
-  /// 加载所有笔记。
+  /// 加载所有笔记及其标签。
   Future<void> loadNotes() async {
     _isLoading.value = true;
     try {
       _notes.value = await _db.getAllNotes();
+      final allTags = await _db.getAllTags();
+      final Map<int, List<String>> tagMap = {};
+      for (final tag in allTags) {
+        tagMap.putIfAbsent(tag.noteId, () => []).add(tag.name);
+      }
+      _tagsByNoteId.value = tagMap;
     } finally {
       _isLoading.value = false;
     }

@@ -4,59 +4,149 @@ import 'package:get/get.dart' hide ContextExtensionss;
 
 import '../../core/database/app_database.dart';
 import '../../routes/app_routes.dart';
+import '../../shared/widgets/frosted_container.dart';
 import '../../theme/app_theme.dart';
 import 'note_list_controller.dart';
 
 /// 笔记列表首页——Samsung Notes 风格。
 ///
 /// 按日期分组（今天/昨天/本周/本月/更早），深色卡片，右下角 FAB 新建。
-class NoteListPage extends StatelessWidget {
+/// 顶部标题在列表滚离顶部时淡出，回到顶部时淡入。
+class NoteListPage extends StatefulWidget {
   const NoteListPage({super.key});
 
   @override
+  State<NoteListPage> createState() => _NoteListPageState();
+}
+
+class _NoteListPageState extends State<NoteListPage> {
+  late final NoteListController _controller;
+  final ScrollController _scrollController = ScrollController();
+  bool _showTitle = true;
+  static const double _kFadeThreshold = 40.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Get.put(NoteListController());
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final shouldShow = _scrollController.hasClients &&
+        _scrollController.offset < _kFadeThreshold;
+    if (shouldShow != _showTitle) {
+      setState(() => _showTitle = shouldShow);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = Get.put(NoteListController());
     final theme = context.theme;
 
     return FScaffold(
-      header: FHeader(
-        title: Text(
-          '笔记',
-          style: theme.typography.xl.copyWith(fontWeight: FontWeight.w700),
-        ),
-        suffixes: [
-          FHeaderAction(
-            icon: const Icon(FLucideIcons.search),
-            onPress: () => Get.toNamed(Routes.search),
+      child: SafeArea(
+        child: Obx(() {
+          if (_controller.isLoading) {
+            return const Center(child: FCircularProgress());
+          }
+
+          return Stack(
+            children: [
+              if (_controller.notes.isEmpty)
+                _buildEmptyState(theme)
+              else
+                _buildGroupedList(context, theme),
+              Positioned(
+                bottom: 24,
+                right: 24,
+                child: _buildFrostedFab(theme),
+              ),
+              _buildTopBar(theme),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+
+  // ── 顶部栏（标题 + 操作按钮，无大胶囊背景）──────────────────────────────
+
+  Widget _buildTopBar(FThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, left: 16, right: 12),
+      child: Row(
+        children: [
+          AnimatedOpacity(
+            opacity: _showTitle ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            child: Text(
+              '笔记',
+              style: theme.typography.xl.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
-          FHeaderAction(
-            icon: const Icon(FLucideIcons.settings),
-            onPress: () => Get.toNamed(Routes.settings),
+          const Spacer(),
+          _buildFrostedCircleBtn(
+            theme: theme,
+            onTap: () => Get.toNamed(Routes.search),
+            child: Icon(
+              FLucideIcons.search,
+              size: 18,
+              color: theme.colors.foreground,
+            ),
+          ),
+          SizedBox(width: AppTheme.spacing.sm),
+          _buildFrostedCircleBtn(
+            theme: theme,
+            onTap: () => Get.toNamed(Routes.settings),
+            child: Icon(
+              FLucideIcons.settings,
+              size: 18,
+              color: theme.colors.foreground,
+            ),
           ),
         ],
       ),
-      child: Obx(() {
-        if (controller.isLoading) {
-          return const Center(child: FCircularProgress());
-        }
-
-        // FAB 始终浮在最上层，无论是否有笔记
-        return Stack(
-          children: [
-            if (controller.notes.isEmpty)
-              _buildEmptyState(theme)
-            else
-              _buildGroupedList(context, controller, theme),
-            Positioned(
-              bottom: 24,
-              right: 24,
-              child: _buildFab(context, controller, theme),
-            ),
-          ],
-        );
-      }),
     );
   }
+
+  // ── 毛玻璃圆形按钮 ─────────────────────────────────────────────────────────
+
+  Widget _buildFrostedCircleBtn({
+    required FThemeData theme,
+    required VoidCallback onTap,
+    required Widget child,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: FrostedContainer(
+        width: 40,
+        height: 40,
+        blurSigma: AppTheme.frost.blurSigma,
+        backgroundColor: theme.colors.background.withValues(
+          alpha: AppTheme.frost.btnAlpha,
+        ),
+        border: Border.all(
+          color: theme.colors.border.withValues(alpha: 0.35),
+          width: AppTheme.frost.borderWidth,
+        ),
+        shape: BoxShape.circle,
+        alignment: Alignment.center,
+        child: child,
+      ),
+    );
+  }
+
+  // ── 空状态 ─────────────────────────────────────────────────────────────────
 
   Widget _buildEmptyState(FThemeData theme) {
     return Center(
@@ -83,20 +173,16 @@ class NoteListPage extends StatelessWidget {
               color: theme.colors.mutedForeground,
             ),
           ),
-          // 空状态也需要 FAB，所以这个会由外层 Stack 提供
         ],
       ),
     );
   }
 
-  Widget _buildGroupedList(
-    BuildContext context,
-    NoteListController controller,
-    FThemeData theme,
-  ) {
-    final groups = controller.noteGroups;
+  // ── 分组列表 ───────────────────────────────────────────────────────────────
 
-    // 展开为扁平 item 列表：section header + note cards
+  Widget _buildGroupedList(BuildContext context, FThemeData theme) {
+    final groups = _controller.noteGroups;
+
     final List<_ListItem> items = [];
     for (final group in groups) {
       items.add(_ListItem.header(group.title));
@@ -106,14 +192,15 @@ class NoteListPage extends StatelessWidget {
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.only(top: 4, bottom: 88),
+      controller: _scrollController,
+      padding: const EdgeInsets.only(top: 52, bottom: 88),
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
         if (item.isHeader) {
           return _buildSectionHeader(item.title!, theme);
         }
-        return _buildNoteCard(context, item.note!, controller, theme);
+        return _buildNoteCard(context, item.note!, theme);
       },
     );
   }
@@ -135,10 +222,9 @@ class NoteListPage extends StatelessWidget {
   Widget _buildNoteCard(
     BuildContext context,
     Note note,
-    NoteListController controller,
     FThemeData theme,
   ) {
-    final preview = controller.notePreview(note);
+    final preview = _controller.notePreview(note);
     final timeStr = _formatNoteTime(note.updatedAt);
 
     return GestureDetector(
@@ -147,9 +233,9 @@ class NoteListPage extends StatelessWidget {
           Routes.noteDetail,
           parameters: {Routes.paramId: '${note.id}'},
         );
-        controller.loadNotes();
+        _controller.loadNotes();
       },
-      onLongPress: () => _showDeleteDialog(context, controller, note),
+      onLongPress: () => _showDeleteDialog(context, note),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         padding: const EdgeInsets.all(14),
@@ -186,36 +272,61 @@ class NoteListPage extends StatelessWidget {
                 ),
               ),
             ],
+
+            // 标签 badge 行
+            Obx(() {
+              final tags = _controller.tagsForNote(note.id);
+              if (tags.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: tags
+                      .map((t) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colors.primary
+                                  .withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radius.full,
+                              ),
+                            ),
+                            child: Text(
+                              t,
+                              style: theme.typography.xs3.copyWith(
+                                color: theme.colors.primary,
+                              ),
+                            ),
+                          ))
+                      .toList(),
+                ),
+              );
+            }),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFab(
-    BuildContext context,
-    NoteListController controller,
-    FThemeData theme,
-  ) {
+  // ── FAB ────────────────────────────────────────────────────────────────────
+
+  Widget _buildFrostedFab(FThemeData theme) {
     return GestureDetector(
       onTap: () async {
         await Get.toNamed(Routes.noteEditor);
-        controller.loadNotes();
+        _controller.loadNotes();
       },
-      child: Container(
+      child: FrostedContainer(
         width: 58,
         height: 58,
-        decoration: BoxDecoration(
-          color: theme.colors.primary,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: theme.colors.primary.withValues(alpha: 0.35),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        blurSigma: 8.0,
+        backgroundColor: theme.colors.primary.withValues(alpha: 0.85),
+        shape: BoxShape.circle,
+        alignment: Alignment.center,
         child: Icon(
           FLucideIcons.plus,
           color: theme.colors.primaryForeground,
@@ -225,7 +336,8 @@ class NoteListPage extends StatelessWidget {
     );
   }
 
-  /// 格式化笔记时间：今天显示时分，否则显示月日。
+  // ── 时间格式化 ─────────────────────────────────────────────────────────────
+
   String _formatNoteTime(DateTime dt) {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
@@ -242,11 +354,9 @@ class NoteListPage extends StatelessWidget {
     return '${dt.month}月${dt.day}日';
   }
 
-  void _showDeleteDialog(
-    BuildContext context,
-    NoteListController controller,
-    Note note,
-  ) {
+  // ── 删除对话框 ─────────────────────────────────────────────────────────────
+
+  void _showDeleteDialog(BuildContext context, Note note) {
     showFDialog(
       context: context,
       builder: (context, style, animation) => FTheme(
@@ -268,7 +378,7 @@ class NoteListPage extends StatelessWidget {
               size: .sm,
               child: const Text('删除'),
               onPress: () {
-                controller.deleteNote(note.id);
+                _controller.deleteNote(note.id);
                 Navigator.of(context).pop();
               },
             ),
@@ -279,7 +389,8 @@ class NoteListPage extends StatelessWidget {
   }
 }
 
-/// 列表项类型（section header 或 note card）。
+// ── 列表项类型 ───────────────────────────────────────────────────────────────
+
 class _ListItem {
   final bool isHeader;
   final String? title;

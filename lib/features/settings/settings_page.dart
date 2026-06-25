@@ -3,58 +3,154 @@ import 'package:forui/forui.dart';
 import 'package:get/get.dart' hide ContextExtensionss;
 
 import '../../core/enum/embedding_backend.dart';
+import '../../shared/widgets/frosted_container.dart';
 import '../../theme/app_theme.dart';
 import 'settings_controller.dart';
 
 /// 设置页。
 ///
 /// 管理 LLM API 配置、嵌入后端选择、自动标签开关。
-class SettingsPage extends StatelessWidget {
+/// 顶部标题在滚离顶部时淡出。
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
   @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  late final SettingsController _controller;
+  final ScrollController _scrollController = ScrollController();
+  bool _showTitle = true;
+  static const double _kFadeThreshold = 40.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Get.put(SettingsController());
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    final shouldShow = _scrollController.hasClients &&
+        _scrollController.offset < _kFadeThreshold;
+    if (shouldShow != _showTitle) {
+      setState(() => _showTitle = shouldShow);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final controller = Get.put(SettingsController());
     final theme = context.theme;
 
     return FScaffold(
-      header: FHeader.nested(
-        title: const Text('设置'),
-        prefixes: [
-          FHeaderAction.back(onPress: () => Get.back()),
-        ],
-      ),
-      child: Obx(() {
-        if (controller.isLoading) {
-          return const Center(child: FCircularProgress());
-        }
+      child: SafeArea(
+        child: Stack(
+          children: [
+            Obx(() {
+              if (_controller.isLoading) {
+                return const Center(child: FCircularProgress());
+              }
 
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionHeader(theme, 'LLM API'),
-              _buildApiKeyField(controller),
-              _buildBaseUrlField(controller),
-              _buildModelNameField(controller),
-              const FDivider(),
-              _buildSectionHeader(theme, '嵌入方案'),
-              _buildEmbeddingSelector(controller, theme),
-              const FDivider(),
-              _buildSectionHeader(theme, '标签'),
-              _buildAutoTagSwitch(controller, theme),
-              const FDivider(),
-              _buildSectionHeader(theme, '关于'),
-              _buildAboutTile(theme),
-              SizedBox(height: AppTheme.spacing.xxl),
-            ],
-          ),
-        );
-      }),
+              return SingleChildScrollView(
+                controller: _scrollController,
+                padding: const EdgeInsets.only(top: 52),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionHeader(theme, 'LLM API'),
+                    _buildApiKeyField(),
+                    _buildBaseUrlField(),
+                    _buildModelNameField(),
+                    const FDivider(),
+                    _buildSectionHeader(theme, '嵌入方案'),
+                    _buildEmbeddingSelector(theme),
+                    const FDivider(),
+                    _buildSectionHeader(theme, '标签'),
+                    _buildAutoTagSwitch(theme),
+                    const FDivider(),
+                    _buildSectionHeader(theme, '关于'),
+                    _buildAboutTile(theme),
+                    SizedBox(height: AppTheme.spacing.xxl),
+                  ],
+                ),
+              );
+            }),
+            _buildTopBar(theme),
+          ],
+        ),
+      ),
     );
   }
 
-  /// 区块标题。
+  // ── 顶部栏（返回按钮 + 标题淡入淡出）─────────────────────────────────────
+
+  Widget _buildTopBar(FThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, left: 12, right: 16),
+      child: Row(
+        children: [
+          _buildFrostedCircleBtn(
+            theme: theme,
+            onTap: () => Get.back(),
+            child: Icon(
+              FLucideIcons.chevronLeft,
+              size: 18,
+              color: theme.colors.foreground,
+            ),
+          ),
+          const SizedBox(width: 10),
+          AnimatedOpacity(
+            opacity: _showTitle ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 200),
+            child: Text(
+              '设置',
+              style: theme.typography.md.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 毛玻璃圆形按钮 ─────────────────────────────────────────────────────────
+
+  Widget _buildFrostedCircleBtn({
+    required FThemeData theme,
+    required VoidCallback onTap,
+    required Widget child,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: FrostedContainer(
+        width: 40,
+        height: 40,
+        blurSigma: AppTheme.frost.blurSigma,
+        backgroundColor: theme.colors.background.withValues(
+          alpha: AppTheme.frost.btnAlpha,
+        ),
+        border: Border.all(
+          color: theme.colors.border.withValues(alpha: 0.35),
+          width: AppTheme.frost.borderWidth,
+        ),
+        shape: BoxShape.circle,
+        alignment: Alignment.center,
+        child: child,
+      ),
+    );
+  }
+
+  // ── 内容构建方法 ───────────────────────────────────────────────────────────
+
   Widget _buildSectionHeader(FThemeData theme, String title) {
     return Padding(
       padding: AppTheme.edgeInsets.sectionHeader,
@@ -68,14 +164,13 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  /// API Key 输入框。
-  Widget _buildApiKeyField(SettingsController controller) {
+  Widget _buildApiKeyField() {
     return Padding(
       padding: AppTheme.edgeInsets.fieldPadding,
       child: FTextField(
         control: .managed(
-          controller: controller.apiKeyController,
-          onChange: (v) => controller.saveApiKey(v.text),
+          controller: _controller.apiKeyController,
+          onChange: (v) => _controller.saveApiKey(v.text),
         ),
         label: const Text('API Key'),
         hint: 'sk-xxxxxxxxxxxx',
@@ -87,14 +182,13 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  /// API Base URL 输入框。
-  Widget _buildBaseUrlField(SettingsController controller) {
+  Widget _buildBaseUrlField() {
     return Padding(
       padding: AppTheme.edgeInsets.fieldPadding,
       child: FTextField(
         control: .managed(
-          controller: controller.baseUrlController,
-          onChange: (v) => controller.saveBaseUrl(v.text),
+          controller: _controller.baseUrlController,
+          onChange: (v) => _controller.saveBaseUrl(v.text),
         ),
         label: const Text('API Base URL'),
         hint: 'https://api.deepseek.com/v1',
@@ -104,14 +198,13 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  /// 模型名称输入框。
-  Widget _buildModelNameField(SettingsController controller) {
+  Widget _buildModelNameField() {
     return Padding(
       padding: AppTheme.edgeInsets.fieldPadding,
       child: FTextField(
         control: .managed(
-          controller: controller.modelNameController,
-          onChange: (v) => controller.saveModelName(v.text),
+          controller: _controller.modelNameController,
+          onChange: (v) => _controller.saveModelName(v.text),
         ),
         label: const Text('模型名称'),
         hint: 'deepseek-chat',
@@ -120,13 +213,9 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  /// 嵌入后端选择器（使用 FTabs 替代 SegmentedButton）。
-  Widget _buildEmbeddingSelector(
-    SettingsController controller,
-    FThemeData theme,
-  ) {
+  Widget _buildEmbeddingSelector(FThemeData theme) {
     final backends = EmbeddingBackend.values;
-    final currentBackend = _backendFromString(controller.embeddingBackend);
+    final currentBackend = _backendFromString(_controller.embeddingBackend);
     final initialIndex = backends.indexOf(currentBackend);
 
     return Padding(
@@ -143,7 +232,7 @@ class SettingsPage extends StatelessWidget {
                     ))
                 .toList(),
             onPress: (index) {
-              controller.changeEmbeddingBackend(backends[index].value);
+              _controller.changeEmbeddingBackend(backends[index].value);
             },
           ),
           SizedBox(height: AppTheme.spacing.sm),
@@ -158,25 +247,20 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  /// 自动标签开关。
-  Widget _buildAutoTagSwitch(
-    SettingsController controller,
-    FThemeData theme,
-  ) {
+  Widget _buildAutoTagSwitch(FThemeData theme) {
     return Padding(
       padding: AppTheme.edgeInsets.fieldPadding,
       child: Obx(
         () => FSwitch(
           label: const Text('保存时自动生成标签'),
           description: const Text('调用 LLM API 分析笔记内容并生成标签'),
-          value: controller.autoTag,
-          onChange: controller.toggleAutoTag,
+          value: _controller.autoTag,
+          onChange: _controller.toggleAutoTag,
         ),
       ),
     );
   }
 
-  /// 关于信息。
   Widget _buildAboutTile(FThemeData theme) {
     return Padding(
       padding: AppTheme.edgeInsets.card,
@@ -201,7 +285,6 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  /// 字符串后端名 → 枚举。
   EmbeddingBackend _backendFromString(String backend) {
     return switch (backend) {
       'litert' => EmbeddingBackend.litert,

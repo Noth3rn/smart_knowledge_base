@@ -20,23 +20,47 @@ enum SearchMode {
   keyword,
 }
 
+/// 时间筛选范围。
+enum TimeFilter {
+  /// 不限制。
+  none('不限'),
+
+  /// 昨天。
+  yesterday('昨天'),
+
+  /// 过去七天。
+  week('过去七天'),
+
+  /// 过去三十天。
+  month('过去三十天');
+
+  const TimeFilter(this.label);
+  final String label;
+}
+
 /// 搜索结果条目。
 class SearchResult {
   final Note note;
-  final double similarity; // 仅语义模式有效，关键词模式为 0
+  final double similarity;
+  final List<String> tags;
 
-  SearchResult({required this.note, this.similarity = 0});
+  SearchResult({
+    required this.note,
+    this.similarity = 0,
+    this.tags = const [],
+  });
 }
 
-/// 搜索控制器——管理搜索输入、防抖、语义/关键词搜索逻辑。
+/// 搜索控制器——管理搜索输入、防抖、筛选、语义/关键词搜索逻辑。
 class NoteSearchController extends GetxController {
   final queryController = TextEditingController();
 
   final _queryText = ''.obs;
   String get queryText => _queryText.value;
 
-  final _results = <SearchResult>[].obs;
-  List<SearchResult> get results => _results;
+  final _allResults = <SearchResult>[].obs;
+  final _filteredResults = <SearchResult>[].obs;
+  List<SearchResult> get results => _filteredResults;
 
   final _isSearching = false.obs;
   bool get isSearching => _isSearching.value;
@@ -47,9 +71,29 @@ class NoteSearchController extends GetxController {
   final _hasSearched = false.obs;
   bool get hasSearched => _hasSearched.value;
 
+  // ── 筛选状态 ───────────────────────────────────────────────────────────────
+
+  final _filterExpanded = false.obs;
+  bool get filterExpanded => _filterExpanded.value;
+
+  final _timeFilter = TimeFilter.none.obs;
+  TimeFilter get timeFilter => _timeFilter.value;
+
+  final _selectedTags = <String>{}.obs;
+  Set<String> get selectedTags => _selectedTags;
+
+  final _allTags = <String>[].obs;
+  List<String> get allTags => _allTags;
+
   Timer? _debounce;
 
   AppDatabase get _db => Get.find<AppDatabase>();
+
+  @override
+  void onInit() {
+    super.onInit();
+    _loadAllTags();
+  }
 
   @override
   void onClose() {
@@ -58,21 +102,90 @@ class NoteSearchController extends GetxController {
     super.onClose();
   }
 
+  /// 加载所有已有标签供筛选栏使用。
+  Future<void> _loadAllTags() async {
+    try {
+      _allTags.value = await _db.getAllDistinctTags();
+    } catch (_) {
+      _allTags.value = [];
+    }
+  }
+
+  // ── 筛选操作 ───────────────────────────────────────────────────────────────
+
+  /// 切换筛选栏展开/收起。
+  void toggleFilter() => _filterExpanded.toggle();
+
+  /// 设置时间筛选（再次点击同一项取消选中）。
+  void setTimeFilter(TimeFilter filter) {
+    _timeFilter.value = _timeFilter.value == filter ? TimeFilter.none : filter;
+    _applyFilters();
+  }
+
+  /// 切换标签筛选。
+  void toggleTag(String tag) {
+    if (_selectedTags.contains(tag)) {
+      _selectedTags.remove(tag);
+    } else {
+      _selectedTags.add(tag);
+    }
+    _applyFilters();
+  }
+
+  /// 应用当前筛选条件到全部结果。
+  void _applyFilters() {
+    var filtered = _allResults.toList();
+
+    // 时间筛选
+    if (_timeFilter.value != TimeFilter.none) {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final cutoff = switch (_timeFilter.value) {
+        TimeFilter.yesterday =>
+          todayStart.subtract(const Duration(days: 1)),
+        TimeFilter.week =>
+          todayStart.subtract(const Duration(days: 7)),
+        TimeFilter.month =>
+          DateTime(now.year, now.month - 1, now.day),
+        _ => todayStart,
+      };
+      filtered = filtered.where((r) {
+        final noteDay = DateTime(
+          r.note.updatedAt.year,
+          r.note.updatedAt.month,
+          r.note.updatedAt.day,
+        );
+        return !noteDay.isBefore(cutoff);
+      }).toList();
+    }
+
+    // 标签筛选（笔记包含任一选中标签即可）
+    if (_selectedTags.isNotEmpty) {
+      filtered = filtered
+          .where((r) => r.tags.any((t) => _selectedTags.contains(t)))
+          .toList();
+    }
+
+    _filteredResults.value = filtered;
+  }
+
+  // ── 搜索逻辑 ───────────────────────────────────────────────────────────────
+
   /// 在搜索框文本变化时调用，300ms 防抖。
   void onQueryChanged(String query) {
     _queryText.value = query;
     _debounce?.cancel();
     if (query.trim().isEmpty) {
-      _results.clear();
+      _allResults.clear();
+      _filteredResults.clear();
       _searchMode.value = SearchMode.idle;
       _hasSearched.value = false;
       return;
     }
     _debounce = Timer(
       Duration(milliseconds: AppTheme.constants.debounceMs),
-      () {
-      search(query.trim());
-    });
+      () => search(query.trim()),
+    );
   }
 
   /// 执行搜索。
@@ -83,7 +196,6 @@ class NoteSearchController extends GetxController {
     _hasSearched.value = true;
 
     try {
-      // 检查嵌入服务是否可用
       EmbeddingService? embeddingService;
       if (Get.isRegistered<EmbeddingService>()) {
         embeddingService = Get.find<EmbeddingService>();
@@ -95,11 +207,11 @@ class NoteSearchController extends GetxController {
         await _keywordSearch(query);
       }
     } catch (_) {
-      // 语义搜索失败，降级为关键词搜索
       try {
         await _keywordSearch(query);
       } catch (_) {
-        _results.clear();
+        _allResults.clear();
+        _filteredResults.clear();
         _searchMode.value = SearchMode.idle;
       }
     } finally {
@@ -107,24 +219,21 @@ class NoteSearchController extends GetxController {
     }
   }
 
-  /// 语义搜索：嵌入查询 → 余弦相似度 → 排序 → Top 20。
   Future<void> _semanticSearch(
     String query,
     EmbeddingService embeddingService,
   ) async {
     _searchMode.value = SearchMode.semantic;
 
-    // 1. 嵌入查询文本
     final queryVector = await embeddingService.embed(query);
 
-    // 2. 获取有嵌入向量的笔记
     final notes = await _db.getNotesWithEmbedding();
     if (notes.isEmpty) {
-      _results.clear();
+      _allResults.clear();
+      _filteredResults.clear();
       return;
     }
 
-    // 3. 计算余弦相似度
     final scored = <SearchResult>[];
     for (final note in notes) {
       if (note.embedding == null) continue;
@@ -133,33 +242,48 @@ class NoteSearchController extends GetxController {
         final similarity =
             VectorUtils.cosineSimilarity(queryVector, noteVector);
         if (similarity > AppTheme.constants.similarityThreshold) {
-          // 过滤低相关
-          scored.add(SearchResult(note: note, similarity: similarity));
+          final noteTags = await _db.getTagsByNoteId(note.id);
+          scored.add(SearchResult(
+            note: note,
+            similarity: similarity,
+            tags: noteTags.map((t) => t.name).toList(),
+          ));
         }
-      } catch (_) {
-        // 解码失败，跳过此条
-      }
+      } catch (_) {}
     }
 
-    // 4. 按相似度降序排列，取 Top 20
     scored.sort((a, b) => b.similarity.compareTo(a.similarity));
     final topK = AppTheme.constants.topK;
-    _results.value = scored.length > topK ? scored.sublist(0, topK) : scored;
+    _allResults.value =
+        scored.length > topK ? scored.sublist(0, topK) : scored;
+    _applyFilters();
   }
 
-  /// 关键词搜索：使用 SQL LIKE 进行全文匹配。
   Future<void> _keywordSearch(String query) async {
     _searchMode.value = SearchMode.keyword;
     final notes = await _db.searchByKeyword(query);
-    _results.value = notes.map((n) => SearchResult(note: n)).toList();
+    final results = <SearchResult>[];
+    for (final n in notes) {
+      final noteTags = await _db.getTagsByNoteId(n.id);
+      results.add(SearchResult(
+        note: n,
+        tags: noteTags.map((t) => t.name).toList(),
+      ));
+    }
+    _allResults.value = results;
+    _applyFilters();
   }
 
   /// 清空搜索结果和输入框。
   void clear() {
     queryController.clear();
     _queryText.value = '';
-    _results.clear();
+    _allResults.clear();
+    _filteredResults.clear();
     _searchMode.value = SearchMode.idle;
     _hasSearched.value = false;
+    _timeFilter.value = TimeFilter.none;
+    _selectedTags.clear();
+    _filterExpanded.value = false;
   }
 }

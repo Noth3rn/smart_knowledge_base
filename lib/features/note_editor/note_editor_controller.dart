@@ -79,7 +79,11 @@ class NoteEditorController extends GetxController {
     _isGeneratingTags.value = true;
     try {
       final service = Get.find<TagGenerationService>();
-      final generated = await service.generateTags(title, content);
+      final generated = await service.generateTags(
+        title,
+        content,
+        existingTags: _tags.toList(),
+      );
 
       // 合并标签（去重，最多 10 个）
       for (final tag in generated) {
@@ -118,7 +122,7 @@ class NoteEditorController extends GetxController {
       return;
     }
 
-    service.generateTags(title, content).then((generated) {
+    service.generateTags(title, content, existingTags: _tags.toList()).then((generated) {
       for (final tag in generated) {
         if (!_tags.contains(tag) && _tags.length < 10) {
           _tags.add(tag);

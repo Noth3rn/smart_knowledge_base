@@ -11,6 +11,7 @@ class AppTheme {
   static const radius = AppRadius();
   static const edgeInsets = AppEdgeInsets();
   static const constants = AppConstants();
+  static const frost = AppFrost();
 }
 
 /// 统一间距常量。
@@ -73,4 +74,30 @@ class AppConstants {
 
   /// 搜索输入防抖延迟（毫秒）。
   int get debounceMs => 300;
+}
+
+/// 毛玻璃浮动胶囊样式常量。
+class AppFrost {
+  const AppFrost();
+
+  /// BackdropFilter 背景模糊半径。
+  double get blurSigma => 10.0;
+
+  /// 浮动导航条半透明背景 alpha（较透明）。
+  double get barAlpha => 0.55;
+
+  /// 独立圆形按钮半透明背景 alpha（略不透明）。
+  double get btnAlpha => 0.60;
+
+  /// 毛玻璃边框宽度。
+  double get borderWidth => 0.5;
+
+  /// 浮动条距屏幕左右边距。
+  double get barHorizontalMargin => 12.0;
+
+  /// 浮动顶栏距 SafeArea 顶部偏移。
+  double get barTopMargin => 8.0;
+
+  /// 浮动底栏距屏幕底部偏移。
+  double get barBottomMargin => 16.0;
 }

@@ -1,15 +1,17 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' show InputBorder;
 import 'package:forui/forui.dart';
 import 'package:get/get.dart' hide ContextExtensionss;
 
 import '../../routes/app_routes.dart';
+import '../../shared/widgets/frosted_container.dart';
 import '../../theme/app_theme.dart';
 import 'note_search_controller.dart';
 
 /// 语义/关键词搜索页。
 ///
-/// 输入查询文本后自动触发搜索（300ms 防抖），
-/// 在语义搜索可用时优先使用语义搜索，否则降级为关键词搜索。
+/// 底部毛玻璃浮动搜索栏，返回按钮左上角，
+/// 支持时间 + 标签筛选，结果卡片带 tag badge。
 class SearchPage extends StatelessWidget {
   const SearchPage({super.key});
 
@@ -19,21 +21,88 @@ class SearchPage extends StatelessWidget {
     final theme = context.theme;
 
     return FScaffold(
-      header: FHeader.nested(
-        title: FTextField(
+      child: SafeArea(
+        child: Stack(
+          children: [
+            Obx(() => _buildBody(context, controller)),
+            _buildBackButton(theme),
+            _buildFloatingSearchBar(theme, controller),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── 左上角返回按钮 ─────────────────────────────────────────────────────────
+
+  Widget _buildBackButton(FThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, left: 12),
+      child: GestureDetector(
+        onTap: () => Get.back(),
+        child: FrostedContainer(
+          width: 40,
+          height: 40,
+          blurSigma: AppTheme.frost.blurSigma,
+          backgroundColor: theme.colors.background.withValues(
+            alpha: AppTheme.frost.btnAlpha,
+          ),
+          border: Border.all(
+            color: theme.colors.border.withValues(alpha: 0.35),
+            width: AppTheme.frost.borderWidth,
+          ),
+          shape: BoxShape.circle,
+          alignment: Alignment.center,
+          child: Icon(
+            FLucideIcons.chevronLeft,
+            size: 18,
+            color: theme.colors.foreground,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── 底部搜索栏 ─────────────────────────────────────────────────────────────
+
+  Widget _buildFloatingSearchBar(
+    FThemeData theme,
+    NoteSearchController controller,
+  ) {
+    return Positioned(
+      bottom: AppTheme.frost.barBottomMargin,
+      left: AppTheme.frost.barHorizontalMargin,
+      right: AppTheme.frost.barHorizontalMargin,
+      child: FrostedContainer(
+        blurSigma: AppTheme.frost.blurSigma,
+        backgroundColor: theme.colors.background.withValues(
+          alpha: AppTheme.frost.barAlpha,
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radius.full),
+        border: Border.all(
+          color: theme.colors.border.withValues(alpha: 0.35),
+          width: AppTheme.frost.borderWidth,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        child: FTextField(
           control: .managed(
             controller: controller.queryController,
             onChange: (v) => controller.onQueryChanged(v.text),
           ),
+          style: .delta(
+            color: FVariantsValueDelta.delta([
+              FVariantValueDeltaOperation.all(null),
+            ]),
+            border: FVariantsValueDelta.delta([
+              FVariantValueDeltaOperation.all(InputBorder.none),
+            ]),
+          ),
           hint: '搜索笔记标题或内容...',
           autofocus: true,
-          prefixBuilder: (context, style, variants) => Icon(
-            FLucideIcons.search,
-            size: 18,
-            color: theme.colors.mutedForeground,
-          ),
-          suffixBuilder: (context, style, variants) => Obx(() {
-            if (controller.queryText.isEmpty) return const SizedBox.shrink();
+          suffixBuilder: (ctx, style, variants) => Obx(() {
+            if (controller.queryText.isEmpty) {
+              return const SizedBox.shrink();
+            }
             return GestureDetector(
               onTap: () => controller.clear(),
               child: Icon(
@@ -44,13 +113,11 @@ class SearchPage extends StatelessWidget {
             );
           }),
         ),
-        prefixes: [
-          FHeaderAction.back(onPress: () => Get.back()),
-        ],
       ),
-      child: Obx(() => _buildBody(context, controller)),
     );
   }
+
+  // ── 主体内容 ───────────────────────────────────────────────────────────────
 
   Widget _buildBody(BuildContext context, NoteSearchController controller) {
     final theme = context.theme;
@@ -59,78 +126,263 @@ class SearchPage extends StatelessWidget {
       return const Center(child: FCircularProgress());
     }
 
-    if (!controller.hasSearched) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(FLucideIcons.search, size: 52, color: theme.colors.mutedForeground),
-            SizedBox(height: AppTheme.spacing.md),
-            Text(
-              '输入关键词进行搜索',
-              style: theme.typography.md.copyWith(
-                color: theme.colors.mutedForeground,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (controller.results.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(FLucideIcons.searchX, size: 52, color: theme.colors.mutedForeground),
-            SizedBox(height: AppTheme.spacing.md),
-            Text('未找到相关笔记', style: theme.typography.md),
-            SizedBox(height: AppTheme.spacing.xs),
-            Text(
-              '换个关键词试试',
-              style: theme.typography.sm.copyWith(
-                color: theme.colors.mutedForeground,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Column(
       children: [
         // 关键词模式提示条
         if (controller.searchMode == SearchMode.keyword)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: theme.colors.secondary,
-            child: Row(
-              children: [
-                Icon(FLucideIcons.info, size: 14, color: theme.colors.mutedForeground),
-                SizedBox(width: AppTheme.spacing.sm),
-                Text(
-                  '关键词搜索模式（语义模型未加载）',
-                  style: theme.typography.xs.copyWith(
-                    color: theme.colors.mutedForeground,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _buildKeywordNotice(theme),
+
+        // 筛选栏
+        _buildFilterBar(theme, controller),
+
+        if (!controller.hasSearched)
+        _buildIdleState(theme),
 
         // 结果列表
+        if (controller.hasSearched && controller.results.isEmpty)
+          _buildNoResults(theme),
+
+        if (controller.hasSearched && controller.results.isNotEmpty)
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding:
+            const EdgeInsets.only(top: 4, bottom: 72),
             itemCount: controller.results.length,
-            itemBuilder: (context, index) =>
-                _buildResultCard(context, controller.results[index], controller),
+            itemBuilder: (context, index) => _buildResultCard(
+              context,
+              controller.results[index],
+              controller,
+            ),
           ),
         ),
       ],
     );
   }
+
+  // ── 空状态 / 无结果 ───────────────────────────────────────────────────────
+
+  Widget _buildIdleState(FThemeData theme) {
+    return Expanded(child: Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            FLucideIcons.search,
+            size: 52,
+            color: theme.colors.mutedForeground,
+          ),
+          SizedBox(height: AppTheme.spacing.md),
+          Text(
+            '输入关键词进行搜索',
+            style: theme.typography.md.copyWith(
+              color: theme.colors.mutedForeground,
+            ),
+          ),
+        ],
+      ),
+    ));
+  }
+
+  Widget _buildNoResults(FThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            FLucideIcons.searchX,
+            size: 52,
+            color: theme.colors.mutedForeground,
+          ),
+          SizedBox(height: AppTheme.spacing.md),
+          Text('未找到相关笔记', style: theme.typography.md),
+          SizedBox(height: AppTheme.spacing.xs),
+          Text(
+            '换个关键词或调整筛选条件试试',
+            style: theme.typography.sm.copyWith(
+              color: theme.colors.mutedForeground,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKeywordNotice(FThemeData theme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      margin: const EdgeInsets.only(top: 52),
+      color: theme.colors.secondary,
+      child: Row(
+        children: [
+          Icon(
+            FLucideIcons.info,
+            size: 14,
+            color: theme.colors.mutedForeground,
+          ),
+          SizedBox(width: AppTheme.spacing.sm),
+          Text(
+            '关键词搜索模式（语义模型未加载）',
+            style: theme.typography.xs.copyWith(
+              color: theme.colors.mutedForeground,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 筛选栏 ─────────────────────────────────────────────────────────────────
+
+  Widget _buildFilterBar(FThemeData theme, NoteSearchController controller) {
+    return Column(
+      children: [
+        SizedBox(height: AppTheme.spacing.lg),
+        // 筛选条件标题行
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16).copyWith(top: 40),
+          child: GestureDetector(
+            onTap: () => controller.toggleFilter(),
+            behavior: HitTestBehavior.opaque,
+            child: Obx(() {
+              return Row(
+                children: [
+                  Text(
+                    '筛选条件',
+                    style: theme.typography.sm.copyWith(
+                      color: theme.colors.mutedForeground,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    controller.filterExpanded
+                        ? FLucideIcons.chevronUp
+                        : FLucideIcons.chevronDown,
+                    size: 16,
+                    color: theme.colors.mutedForeground,
+                  ),
+                ],
+              );
+            }),
+          ),
+        ),
+
+        // 展开的筛选内容
+        Obx(() {
+          if (!controller.filterExpanded) return const SizedBox.shrink();
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(height: AppTheme.spacing.md),
+              // 时间筛选
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  '时间',
+                  style: theme.typography.xs.copyWith(
+                    color: theme.colors.mutedForeground,
+                  ),
+                ),
+              ),
+              SizedBox(height: AppTheme.spacing.sm),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Wrap(
+                  spacing: AppTheme.spacing.sm,
+                  runSpacing: AppTheme.spacing.sm,
+                  children: TimeFilter.values
+                      .where((f) => f != TimeFilter.none)
+                      .map((f) => _buildCapsuleOption(
+                            theme: theme,
+                            label: f.label,
+                            selected: controller.timeFilter == f,
+                            onTap: () => controller.setTimeFilter(f),
+                          ))
+                      .toList(),
+                ),
+              ),
+
+              // 标签筛选
+              if (controller.allTags.isNotEmpty) ...[
+                SizedBox(height: AppTheme.spacing.md),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    '标签',
+                    style: theme.typography.xs.copyWith(
+                      color: theme.colors.mutedForeground,
+                    ),
+                  ),
+                ),
+                SizedBox(height: AppTheme.spacing.sm),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Obx(() {
+                    return Wrap(
+                      spacing: AppTheme.spacing.sm,
+                      runSpacing: AppTheme.spacing.sm,
+                      children: controller.allTags.map((tag) {
+                        final selected =
+                            controller.selectedTags.contains(tag);
+                        return _buildCapsuleOption(
+                          theme: theme,
+                          label: tag,
+                          selected: selected,
+                          onTap: () => controller.toggleTag(tag),
+                        );
+                      }).toList(),
+                    );
+                  }),
+                ),
+              ],
+
+              SizedBox(height: AppTheme.spacing.sm),
+              const FDivider(),
+            ],
+          );
+        }),
+
+        if (!controller.filterExpanded) const FDivider(),
+      ],
+    );
+  }
+
+  /// 胶囊单选/多选按钮。
+  Widget _buildCapsuleOption({
+    required FThemeData theme,
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: selected
+              ? theme.colors.primary.withValues(alpha: 0.25)
+              : theme.colors.secondary,
+          borderRadius: BorderRadius.circular(AppTheme.radius.full),
+          border: Border.all(
+            color: selected
+                ? theme.colors.primary.withValues(alpha: 0.5)
+                : theme.colors.border.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Text(
+          label,
+          style: theme.typography.xs.copyWith(
+            color: selected ? theme.colors.primary : theme.colors.foreground,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── 结果卡片 ───────────────────────────────────────────────────────────────
 
   Widget _buildResultCard(
     BuildContext context,
@@ -208,6 +460,36 @@ class SearchPage extends StatelessWidget {
                 style: theme.typography.sm.copyWith(
                   color: theme.colors.mutedForeground,
                 ),
+              ),
+            ],
+
+            // 标签 badge 行
+            if (result.tags.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: result.tags
+                    .map((t) => Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.colors.primary
+                                .withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(
+                              AppTheme.radius.full,
+                            ),
+                          ),
+                          child: Text(
+                            t,
+                            style: theme.typography.xs3.copyWith(
+                              color: theme.colors.primary,
+                            ),
+                          ),
+                        ))
+                    .toList(),
               ),
             ],
           ],

@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:forui/forui.dart';
 import 'package:get/get.dart' hide ContextExtensionss;
 
+import '../../shared/widgets/frosted_container.dart';
 import '../../theme/app_theme.dart';
 import 'model_download_controller.dart';
 
@@ -9,6 +10,7 @@ import 'model_download_controller.dart';
 ///
 /// 用户需要提供模型文件 (.tflite) 和分词器 (.model) 的下载 URL。
 /// 可从 HuggingFace、Google Edge AI 等模型托管平台获取。
+/// 顶部使用毛玻璃浮动胶囊导航栏。
 class ModelDownloadPage extends StatelessWidget {
   const ModelDownloadPage({super.key});
 
@@ -19,19 +21,94 @@ class ModelDownloadPage extends StatelessWidget {
     return PopScope(
       canPop: !controller.isDownloading,
       child: FScaffold(
-        header: FHeader(
-          title: const Text('下载嵌入模型'),
-          suffixes: [
-            if (!controller.isDownloading)
-              FHeaderAction.x(onPress: () => Navigator.of(context).pop()),
-          ],
-        ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Obx(() => _buildBody(context, controller)),
+          child: Stack(
+            children: [
+              SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 68, 24, 24),
+                child: Obx(() => _buildBody(context, controller)),
+              ),
+              _buildFloatingTopBar(context, controller),
+            ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// 毛玻璃浮动顶栏——标题 + 关闭按钮（下载中隐藏关闭）。
+  Widget _buildFloatingTopBar(
+    BuildContext context,
+    ModelDownloadController controller,
+  ) {
+    final theme = context.theme;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        top: AppTheme.frost.barTopMargin,
+        left: AppTheme.frost.barHorizontalMargin,
+        right: AppTheme.frost.barHorizontalMargin,
+      ),
+      child: FrostedContainer(
+        blurSigma: AppTheme.frost.blurSigma,
+        backgroundColor: theme.colors.background.withValues(
+          alpha: AppTheme.frost.barAlpha,
+        ),
+        borderRadius: BorderRadius.circular(AppTheme.radius.full),
+        border: Border.all(
+          color: theme.colors.border.withValues(alpha: 0.35),
+          width: AppTheme.frost.borderWidth,
+        ),
+        padding: const EdgeInsets.only(left: 16, right: 6, top: 8, bottom: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                '下载嵌入模型',
+                style: theme.typography.md.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            // 下载中不显示关闭按钮
+            if (!controller.isDownloading)
+              _buildFrostedCircleBtn(
+                theme: theme,
+                onTap: () => Navigator.of(context).pop(),
+                child: Icon(
+                  FLucideIcons.x,
+                  size: 18,
+                  color: theme.colors.foreground,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 毛玻璃圆形按钮。
+  Widget _buildFrostedCircleBtn({
+    required FThemeData theme,
+    required VoidCallback onTap,
+    required Widget child,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: FrostedContainer(
+        width: 36,
+        height: 36,
+        blurSigma: AppTheme.frost.blurSigma,
+        backgroundColor: theme.colors.background.withValues(
+          alpha: AppTheme.frost.btnAlpha,
+        ),
+        border: Border.all(
+          color: theme.colors.border.withValues(alpha: 0.35),
+          width: AppTheme.frost.borderWidth,
+        ),
+        shape: BoxShape.circle,
+        alignment: Alignment.center,
+        child: child,
       ),
     );
   }
