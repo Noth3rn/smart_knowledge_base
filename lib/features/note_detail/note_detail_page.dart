@@ -1,103 +1,132 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:forui/forui.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:get/get.dart';
+import 'package:get/get.dart' hide ContextExtensionss;
 
 import '../../routes/app_routes.dart';
 import '../../shared/utils/export_helper.dart';
+import '../../theme/app_theme.dart';
 import 'note_detail_controller.dart';
 
+/// 笔记详情页。
+///
+/// 展示 Markdown 渲染的笔记内容、标签列表、时间信息，
+/// 支持导出、编辑、删除操作。
 class NoteDetailPage extends StatelessWidget {
   const NoteDetailPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(NoteDetailController());
-    final id = Get.parameters['id'];
+    final id = Get.parameters[Routes.paramId];
 
     if (id != null && controller.note == null) {
       controller.loadNote(int.parse(id));
     }
 
-    return Scaffold(
-      appBar: AppBar(
+    return FScaffold(
+      header: FHeader.nested(
         title: Obx(() => Text(controller.note?.title ?? '笔记详情')),
-        actions: [
-          // 导出按钮
+        prefixes: [
+          FHeaderAction.back(onPress: () => Get.back()),
+        ],
+        suffixes: [
           Obx(() {
             final note = controller.note;
-            if (note == null) return const SizedBox.shrink();
-            return IconButton(
-              icon: const Icon(Icons.ios_share),
-              tooltip: '导出',
-              onPressed: () =>
+            if (note == null) {
+              return const SizedBox.shrink();
+            }
+            return FHeaderAction(
+              icon: const Icon(FLucideIcons.share),
+              onPress: () =>
                   ExportHelper.exportNote(note.title, note.content),
             );
           }),
-          // 编辑按钮
-          IconButton(
-            icon: const Icon(Icons.edit),
-            onPressed: () async {
+          FHeaderAction(
+            icon: const Icon(FLucideIcons.pencil),
+            onPress: () async {
               final noteId = controller.note?.id;
               if (noteId != null) {
                 await Get.toNamed(
                   Routes.noteEditor,
-                  parameters: {'id': '$noteId'},
+                  parameters: {Routes.paramId: '$noteId'},
                 );
                 controller.loadNote(noteId);
               }
             },
           ),
-          // 删除按钮
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => _showDeleteDialog(context, controller),
+          FHeaderAction(
+            icon: const Icon(FLucideIcons.trash),
+            onPress: () => _showDeleteDialog(context, controller),
           ),
         ],
       ),
-      body: Obx(() {
+      child: Obx(() {
         final note = controller.note;
         if (note == null) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: FCircularProgress());
         }
+
+        final tags = controller.tags;
+        final theme = context.theme;
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 标签区
-            if (controller.tags.isNotEmpty)
+            if (tags.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: controller.tags
-                      .map((t) => Chip(
-                            label: Text(t.name),
-                            materialTapTargetSize:
-                                MaterialTapTargetSize.shrinkWrap,
-                            visualDensity: VisualDensity.compact,
+                  spacing: AppTheme.spacing.sm,
+                  runSpacing: AppTheme.spacing.xs,
+                  children: tags
+                      .map((t) => Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: theme.colors.secondary,
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.radius.full,
+                              ),
+                            ),
+                            child: Text(
+                              t.name,
+                              style: theme.typography.xs.copyWith(
+                                color: theme.colors.secondaryForeground,
+                              ),
+                            ),
                           ))
                       .toList(),
                 ),
               ),
-            if (controller.tags.isNotEmpty) const Divider(),
+              const FDivider(),
+            ],
+
             // 笔记内容（Markdown 渲染）
-            Expanded(
-              child: note.content.isNotEmpty
-                  ? Markdown(
-                      data: note.content,
-                      padding: const EdgeInsets.all(16),
-                    )
-                  : const Center(child: Text('无内容')),
-            ),
+            if (note.content.isNotEmpty)
+              Expanded(
+                child: Markdown(
+                  data: note.content,
+                  padding: const EdgeInsets.all(16),
+                ),
+              )
+            else
+              const Expanded(
+                child: Center(child: Text('无内容')),
+              ),
+
             // 时间信息
             Padding(
               padding: const EdgeInsets.all(16),
               child: Text(
-                '创建于 ${note.createdAt.toString().substring(0, 16)}\n'
-                '更新于 ${note.updatedAt.toString().substring(0, 16)}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                    ),
+                '创建于 ${_formatDateTime(note.createdAt)}\n'
+                '更新于 ${_formatDateTime(note.updatedAt)}',
+                style: theme.typography.xs.copyWith(
+                  color: theme.colors.mutedForeground,
+                ),
               ),
             ),
           ],
@@ -106,24 +135,41 @@ class NoteDetailPage extends StatelessWidget {
     );
   }
 
+  /// 格式化日期时间为简短字符串。
+  String _formatDateTime(DateTime dt) => dt.toString().substring(0, 16);
+
+  /// 显示删除确认对话框。
   void _showDeleteDialog(
-      BuildContext context, NoteDetailController controller) {
-    showDialog(
+    BuildContext context,
+    NoteDetailController controller,
+  ) {
+    showFDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除笔记'),
-        content: Text('确定要删除「${controller.note?.title}」吗？'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
-          TextButton(
-            onPressed: () {
-              controller.deleteNote();
-              Navigator.pop(ctx);
-            },
-            child: const Text('删除', style: TextStyle(color: Colors.red)),
-          ),
-        ],
+      builder: (context, style, animation) => FTheme(
+        data: context.theme,
+        child: FDialog(
+          style: style,
+          animation: animation,
+          title: const Text('删除笔记'),
+          body: Text('确定要删除「${controller.note?.title}」吗？'),
+          actions: [
+            FButton(
+              variant: .outline,
+              size: .sm,
+              child: const Text('取消'),
+              onPress: () => Navigator.of(context).pop(),
+            ),
+            FButton(
+              variant: .destructive,
+              size: .sm,
+              child: const Text('删除'),
+              onPress: () {
+                controller.deleteNote();
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

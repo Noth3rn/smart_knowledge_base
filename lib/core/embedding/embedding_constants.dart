@@ -1,4 +1,4 @@
-/// 嵌入模块共享常量。
+/// 嵌入模块与全局配置的共享常量。
 class EmbeddingConstants {
   EmbeddingConstants._();
 
@@ -37,14 +37,21 @@ class EmbeddingConstants {
   /// HuggingFace Token（安全存储）。
   static const String keyHfToken = 'huggingFaceToken';
 
-  /// 用户偏好的嵌入后端："litert" | "api" | "auto" | null。
+  /// 用户偏好的嵌入后端。
   static const String keyPreferredBackend = 'preferredEmbeddingBackend';
+
+  /// 保存时自动生成标签开关。
+  static const String keyAutoTag = 'autoTag';
+
+  /// LLM 模型名称。
+  static const String keyLlmModelName = 'llmModelName';
 
   // ---------- 后端名称 ----------
 
   static const String backendLiteRt = 'litert';
   static const String backendApi = 'api';
   static const String backendNone = 'none';
+  static const String backendAuto = 'auto';
 
   // ---------- 嵌入参数 ----------
 

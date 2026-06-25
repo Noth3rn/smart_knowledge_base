@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 import '../../core/database/app_database.dart';
 import '../../core/embedding/embedding_service.dart';
 import '../../shared/utils/vector_utils.dart';
+import '../../theme/app_theme.dart';
 
 /// 搜索模式。
 enum SearchMode {
@@ -27,6 +28,7 @@ class SearchResult {
   SearchResult({required this.note, this.similarity = 0});
 }
 
+/// 搜索控制器——管理搜索输入、防抖、语义/关键词搜索逻辑。
 class NoteSearchController extends GetxController {
   final queryController = TextEditingController();
 
@@ -66,7 +68,9 @@ class NoteSearchController extends GetxController {
       _hasSearched.value = false;
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 300), () {
+    _debounce = Timer(
+      Duration(milliseconds: AppTheme.constants.debounceMs),
+      () {
       search(query.trim());
     });
   }
@@ -128,7 +132,7 @@ class NoteSearchController extends GetxController {
         final noteVector = VectorUtils.decode(note.embedding!);
         final similarity =
             VectorUtils.cosineSimilarity(queryVector, noteVector);
-        if (similarity > 0.2) {
+        if (similarity > AppTheme.constants.similarityThreshold) {
           // 过滤低相关
           scored.add(SearchResult(note: note, similarity: similarity));
         }
@@ -139,7 +143,8 @@ class NoteSearchController extends GetxController {
 
     // 4. 按相似度降序排列，取 Top 20
     scored.sort((a, b) => b.similarity.compareTo(a.similarity));
-    _results.value = scored.length > 20 ? scored.sublist(0, 20) : scored;
+    final topK = AppTheme.constants.topK;
+    _results.value = scored.length > topK ? scored.sublist(0, topK) : scored;
   }
 
   /// 关键词搜索：使用 SQL LIKE 进行全文匹配。

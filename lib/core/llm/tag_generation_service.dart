@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 
+import '../embedding/embedding_constants.dart';
 import '../storage/secure_storage_service.dart';
 
 /// LLM 标签生成服务——调用 OpenAI 兼容 Chat Completions API，
@@ -38,7 +39,7 @@ class TagGenerationService extends GetxController {
 
     final baseUrl =
         await _secureStorage.getBaseUrl() ?? 'https://api.deepseek.com/v1';
-    final modelName = _box.read<String>('llmModelName') ?? 'deepseek-v4-flash';
+    final modelName = _box.read<String>(EmbeddingConstants.keyLlmModelName) ?? 'deepseek-v4-flash';
 
     final dio = Dio(BaseOptions(
       baseUrl: baseUrl,

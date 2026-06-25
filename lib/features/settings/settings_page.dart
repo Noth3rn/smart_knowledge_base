@@ -1,132 +1,156 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:flutter/widgets.dart';
+import 'package:forui/forui.dart';
+import 'package:get/get.dart' hide ContextExtensionss;
 
+import '../../core/enum/embedding_backend.dart';
+import '../../theme/app_theme.dart';
 import 'settings_controller.dart';
 
+/// 设置页。
+///
+/// 管理 LLM API 配置、嵌入后端选择、自动标签开关。
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(SettingsController());
-    final theme = Theme.of(context);
+    final theme = context.theme;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('设置')),
-      body: Obx(() {
+    return FScaffold(
+      header: FHeader.nested(
+        title: const Text('设置'),
+        prefixes: [
+          FHeaderAction.back(onPress: () => Get.back()),
+        ],
+      ),
+      child: Obx(() {
         if (controller.isLoading) {
-          return const Center(child: CircularProgressIndicator());
+          return const Center(child: FCircularProgress());
         }
 
-        return ListView(
-          children: [
-            _buildSectionHeader(context, 'LLM API'),
-            _buildApiKeyField(controller, theme),
-            _buildBaseUrlField(controller, theme),
-            _buildModelNameField(controller, theme),
-            const Divider(),
-            _buildSectionHeader(context, '嵌入方案'),
-            _buildEmbeddingSelector(controller, theme),
-            const Divider(),
-            _buildSectionHeader(context, '标签'),
-            _buildAutoTagSwitch(controller, theme),
-            const Divider(),
-            _buildSectionHeader(context, '关于'),
-            _buildAboutTile(theme),
-            const SizedBox(height: 32),
-          ],
+        return SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(theme, 'LLM API'),
+              _buildApiKeyField(controller),
+              _buildBaseUrlField(controller),
+              _buildModelNameField(controller),
+              const FDivider(),
+              _buildSectionHeader(theme, '嵌入方案'),
+              _buildEmbeddingSelector(controller, theme),
+              const FDivider(),
+              _buildSectionHeader(theme, '标签'),
+              _buildAutoTagSwitch(controller, theme),
+              const FDivider(),
+              _buildSectionHeader(theme, '关于'),
+              _buildAboutTile(theme),
+              SizedBox(height: AppTheme.spacing.xxl),
+            ],
+          ),
         );
       }),
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title) {
+  /// 区块标题。
+  Widget _buildSectionHeader(FThemeData theme, String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      padding: AppTheme.edgeInsets.sectionHeader,
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: Theme.of(context).colorScheme.primary,
-            ),
+        style: theme.typography.md.copyWith(
+          color: theme.colors.primary,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
 
-  Widget _buildApiKeyField(SettingsController controller, ThemeData theme) {
+  /// API Key 输入框。
+  Widget _buildApiKeyField(SettingsController controller) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: TextField(
-        controller: controller.apiKeyController,
+      padding: AppTheme.edgeInsets.fieldPadding,
+      child: FTextField(
+        control: .managed(
+          controller: controller.apiKeyController,
+          onChange: (v) => controller.saveApiKey(v.text),
+        ),
+        label: const Text('API Key'),
+        hint: 'sk-xxxxxxxxxxxx',
+        description: const Text('用于 LLM 自动打标签和 API 嵌入降级'),
         obscureText: true,
-        decoration: InputDecoration(
-          labelText: 'API Key',
-          hintText: 'sk-xxxxxxxxxxxx',
-          border: const OutlineInputBorder(),
-          helperText: '用于 LLM 自动打标签和 API 嵌入降级',
-          helperMaxLines: 1,
-          prefixIcon: const Icon(Icons.key),
-        ),
-        onChanged: controller.saveApiKey,
+        keyboardType: TextInputType.visiblePassword,
+        size: .md,
       ),
     );
   }
 
-  Widget _buildBaseUrlField(SettingsController controller, ThemeData theme) {
+  /// API Base URL 输入框。
+  Widget _buildBaseUrlField(SettingsController controller) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: TextField(
-        controller: controller.baseUrlController,
-        decoration: const InputDecoration(
-          labelText: 'API Base URL',
-          hintText: 'https://api.deepseek.com/v1',
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(Icons.link),
+      padding: AppTheme.edgeInsets.fieldPadding,
+      child: FTextField(
+        control: .managed(
+          controller: controller.baseUrlController,
+          onChange: (v) => controller.saveBaseUrl(v.text),
         ),
+        label: const Text('API Base URL'),
+        hint: 'https://api.deepseek.com/v1',
         keyboardType: TextInputType.url,
-        onChanged: controller.saveBaseUrl,
+        size: .md,
       ),
     );
   }
 
-  Widget _buildModelNameField(SettingsController controller, ThemeData theme) {
+  /// 模型名称输入框。
+  Widget _buildModelNameField(SettingsController controller) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: TextField(
-        controller: controller.modelNameController,
-        decoration: const InputDecoration(
-          labelText: '模型名称',
-          hintText: 'deepseek-chat',
-          border: OutlineInputBorder(),
-          prefixIcon: Icon(Icons.model_training),
+      padding: AppTheme.edgeInsets.fieldPadding,
+      child: FTextField(
+        control: .managed(
+          controller: controller.modelNameController,
+          onChange: (v) => controller.saveModelName(v.text),
         ),
-        onChanged: controller.saveModelName,
+        label: const Text('模型名称'),
+        hint: 'deepseek-chat',
+        size: .md,
       ),
     );
   }
 
+  /// 嵌入后端选择器（使用 FTabs 替代 SegmentedButton）。
   Widget _buildEmbeddingSelector(
-      SettingsController controller, ThemeData theme) {
+    SettingsController controller,
+    FThemeData theme,
+  ) {
+    final backends = EmbeddingBackend.values;
+    final currentBackend = _backendFromString(controller.embeddingBackend);
+    final initialIndex = backends.indexOf(currentBackend);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'auto', label: Text('自动')),
-              ButtonSegment(value: 'litert', label: Text('LiteRT')),
-              ButtonSegment(value: 'api', label: Text('API')),
-            ],
-            selected: {controller.embeddingBackend},
-            onSelectionChanged: (selected) {
-              controller.changeEmbeddingBackend(selected.first);
+          FTabs(
+            control: .managed(initial: initialIndex.clamp(0, backends.length - 1)),
+            children: backends
+                .map((b) => FTabEntry(
+                      label: Text(b.displayName),
+                      child: const SizedBox.shrink(),
+                    ))
+                .toList(),
+            onPress: (index) {
+              controller.changeEmbeddingBackend(backends[index].value);
             },
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: AppTheme.spacing.sm),
           Text(
-            _backendDescription(controller.embeddingBackend),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+            currentBackend.description,
+            style: theme.typography.sm.copyWith(
+              color: theme.colors.mutedForeground,
             ),
           ),
         ],
@@ -134,30 +158,55 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  String _backendDescription(String backend) {
-    return switch (backend) {
-      'auto' => '优先使用设备端模型，不可用时降级到 API',
-      'litert' => '仅使用设备端模型，完全离线运行',
-      'api' => '仅使用远程 API，需要配置 API Key',
-      _ => '',
-    };
-  }
-
+  /// 自动标签开关。
   Widget _buildAutoTagSwitch(
-      SettingsController controller, ThemeData theme) {
-    return SwitchListTile(
-      title: const Text('保存时自动生成标签'),
-      subtitle: const Text('调用 LLM API 分析笔记内容并生成标签'),
-      value: controller.autoTag,
-      onChanged: controller.toggleAutoTag,
+    SettingsController controller,
+    FThemeData theme,
+  ) {
+    return Padding(
+      padding: AppTheme.edgeInsets.fieldPadding,
+      child: Obx(
+        () => FSwitch(
+          label: const Text('保存时自动生成标签'),
+          description: const Text('调用 LLM API 分析笔记内容并生成标签'),
+          value: controller.autoTag,
+          onChange: controller.toggleAutoTag,
+        ),
+      ),
     );
   }
 
-  Widget _buildAboutTile(ThemeData theme) {
-    return const ListTile(
-      title: Text('SmartKnowledgeBase'),
-      subtitle: Text('v1.0.0 — 个人知识管理工具'),
-      leading: Icon(Icons.info_outline),
+  /// 关于信息。
+  Widget _buildAboutTile(FThemeData theme) {
+    return Padding(
+      padding: AppTheme.edgeInsets.card,
+      child: Row(
+        children: [
+          const Icon(FLucideIcons.info),
+          SizedBox(width: AppTheme.spacing.md),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('SmartKnowledgeBase'),
+              Text(
+                'v1.0.0 — 个人知识管理工具',
+                style: theme.typography.sm.copyWith(
+                  color: theme.colors.mutedForeground,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
+  }
+
+  /// 字符串后端名 → 枚举。
+  EmbeddingBackend _backendFromString(String backend) {
+    return switch (backend) {
+      'litert' => EmbeddingBackend.litert,
+      'api' => EmbeddingBackend.api,
+      _ => EmbeddingBackend.auto,
+    };
   }
 }

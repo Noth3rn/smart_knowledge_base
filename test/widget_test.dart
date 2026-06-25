@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:get/get.dart';
 import 'package:drift/native.dart';
@@ -19,15 +18,15 @@ void main() {
     Get.reset();
   });
 
-  testWidgets('App renders note list page', (WidgetTester tester) async {
+  testWidgets('App renders note list page with ForUI theme', (
+    WidgetTester tester,
+  ) async {
     await tester.pumpWidget(const App());
     await tester.pumpAndSettle();
 
     // 验证首页显示应用标题
     expect(find.text('SmartKnowledgeBase'), findsOneWidget);
     // 验证空状态提示存在
-    expect(find.text('还没有笔记，点击右下角创建'), findsOneWidget);
-    // 验证 FAB 存在
-    expect(find.byIcon(Icons.add), findsOneWidget);
+    expect(find.text('还没有笔记，点击右上角 + 创建'), findsOneWidget);
   });
 }

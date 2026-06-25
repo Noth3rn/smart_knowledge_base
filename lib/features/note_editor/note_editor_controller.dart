@@ -3,7 +3,9 @@ import 'package:drift/drift.dart';
 import 'package:get_storage/get_storage.dart';
 
 import '../../core/database/app_database.dart';
+import '../../core/embedding/embedding_constants.dart';
 import '../../core/embedding/embedding_service.dart';
+import '../../core/enum/tag_source.dart';
 import '../../core/llm/tag_generation_service.dart';
 import '../../shared/utils/vector_utils.dart';
 
@@ -104,7 +106,7 @@ class NoteEditorController extends GetxController {
 
   /// 保存后自动打标签（fire-and-forget，不阻塞保存）。
   void _autoGenerateTags(String title, String content) {
-    final autoTag = GetStorage().read<bool>('autoTag') ?? false;
+    final autoTag = GetStorage().read<bool>(EmbeddingConstants.keyAutoTag) ?? false;
     if (!autoTag) return;
     if (!Get.isRegistered<TagGenerationService>()) return;
 
@@ -124,7 +126,7 @@ class NoteEditorController extends GetxController {
       }
       // 更新数据库中的标签
       if (_noteId.value != null) {
-        _db.addTags(_noteId.value!, generated, source: 'llm');
+        _db.addTags(_noteId.value!, generated, source: TagSource.llm.value);
       }
     }).catchError((_) {
       // 静默失败——自动标签是增强功能
@@ -161,7 +163,7 @@ class NoteEditorController extends GetxController {
 
       // 保存手动标签
       if (_tags.isNotEmpty) {
-        await _db.addTags(noteId, _tags, source: 'manual');
+        await _db.addTags(noteId, _tags, source: TagSource.manual.value);
       }
 
       // Phase 3 — 异步触发嵌入计算（fire-and-forget，不阻塞保存返回）

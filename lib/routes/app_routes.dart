@@ -14,6 +14,9 @@ abstract class Routes {
   static const search = '/search';
   static const settings = '/settings';
   static const modelDownload = '/model-download';
+
+  /// 路由参数键——笔记 ID。
+  static const paramId = 'id';
 }
 
 final appPages = [

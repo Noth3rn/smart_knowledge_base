@@ -1,9 +1,14 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:forui/forui.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:get/get.dart';
+import 'package:get/get.dart' hide ContextExtensionss;
 
+import '../../theme/app_theme.dart';
 import 'note_editor_controller.dart';
 
+/// 笔记编辑页——支持 Markdown 编辑与预览双模式切换。
+///
+/// 提供标题输入、标签管理、内容编辑/预览、保存等功能。
 class NoteEditorPage extends StatelessWidget {
   const NoteEditorPage({super.key});
 
@@ -11,78 +16,91 @@ class NoteEditorPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(NoteEditorController());
 
-    // 从路由参数获取笔记 ID
+    // 从路由参数获取笔记 ID（编辑模式）
     final id = Get.parameters['id'];
     if (id != null && controller.noteId == null) {
       controller.loadNote(int.parse(id));
     }
 
-    return Scaffold(
-      appBar: AppBar(
+    return FScaffold(
+      header: FHeader.nested(
         title: Text(controller.isEditing ? '编辑笔记' : '新建笔记'),
-        actions: [
-          // 预览切换按钮
-          Obx(() => IconButton(
-                icon: Icon(controller.isPreview ? Icons.edit : Icons.visibility),
-                tooltip: controller.isPreview ? '编辑' : '预览',
-                onPressed: () => controller.togglePreview(),
-              )),
-          // 保存按钮
-          Obx(() => controller.isSaving
-              ? const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: SizedBox(
-                      width: 24, height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2)),
-                )
-              : TextButton(
-                  onPressed: () => controller.save(),
-                  child: const Text('保存'),
+        prefixes: [
+          FHeaderAction.back(onPress: () => Get.back()),
+        ],
+        suffixes: [
+          // 预览切换
+          Obx(() => FHeaderAction(
+                icon: Icon(
+                  controller.isPreview
+                      ? FLucideIcons.pencil
+                      : FLucideIcons.eye,
                 ),
-          ),
+                onPress: () => controller.togglePreview(),
+              )),
+          // 保存
+          Obx(() {
+            if (controller.isSaving) {
+              return const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: FCircularProgress(size: .sm),
+                ),
+              );
+            }
+            return FHeaderAction(
+              icon: const Icon(FLucideIcons.check),
+              onPress: () => controller.save(),
+            );
+          }),
         ],
       ),
-      body: Column(
+      child: Column(
         children: [
           // 标题输入
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: TextField(
-              controller: TextEditingController(
-                  text: controller.titleController.value)
-                ..selection = TextSelection.fromPosition(TextPosition(
-                    offset: controller.titleController.value.length)),
-              decoration: const InputDecoration(
-                hintText: '笔记标题',
-                border: OutlineInputBorder(),
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-              style: Theme.of(context).textTheme.titleLarge,
-              onChanged: (v) => controller.titleController.value = v,
-            ),
-          ),
+          Obx(() => Padding(
+                padding: AppTheme.edgeInsets.editorPadding,
+                child: FTextField(
+                  control: .managed(
+                    initial: TextEditingValue(
+                      text: controller.titleController.value,
+                    ),
+                    onChange: (v) =>
+                        controller.titleController.value = v.text,
+                  ),
+                  hint: '笔记标题',
+                  size: .lg,
+                ),
+              )),
 
           // 标签输入区
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: _buildTagSection(controller),
+            padding: AppTheme.edgeInsets.editorTagPadding,
+            child: _buildTagSection(context, controller),
           ),
 
-          const SizedBox(height: 8),
+          SizedBox(height: AppTheme.spacing.sm),
 
           // 内容区：编辑或预览
           Expanded(
             child: Obx(() => controller.isPreview
-                ? _buildPreview(controller)
-                : _buildEditor(controller)),
+                ? _buildPreview(context, controller)
+                : _buildEditor(context, controller)),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTagSection(NoteEditorController controller) {
+  /// 标签管理区域——已添加标签 + 新标签输入 + 自动打标签按钮。
+  Widget _buildTagSection(
+    BuildContext context,
+    NoteEditorController controller,
+  ) {
+    final theme = context.theme;
+
     return Obx(() {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,72 +111,88 @@ class NoteEditorPage extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 8),
               child: Wrap(
                 spacing: 6,
-                runSpacing: 4,
+                runSpacing: AppTheme.spacing.xs,
                 children: controller.tags.map((tag) {
-                  return Chip(
-                    label: Text(tag, style: const TextStyle(fontSize: 13)),
-                    deleteIcon: const Icon(Icons.close, size: 16),
-                    onDeleted: () => controller.removeTag(tag),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colors.secondary,
+                      borderRadius: BorderRadius.circular(
+                        AppTheme.radius.full,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          tag,
+                          style: theme.typography.xs.copyWith(
+                            color: theme.colors.secondaryForeground,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        GestureDetector(
+                          onTap: () => controller.removeTag(tag),
+                          child: Icon(
+                            FLucideIcons.x,
+                            size: 14,
+                            color: theme.colors.secondaryForeground,
+                          ),
+                        ),
+                      ],
+                    ),
                   );
                 }).toList(),
               ),
             ),
+
           // 添加新标签
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: TextEditingController(
-                      text: controller.newTagText.value)
-                    ..selection = TextSelection.fromPosition(TextPosition(
-                        offset: controller.newTagText.value.length)),
-                  decoration: const InputDecoration(
-                    hintText: '添加标签...',
-                    border: OutlineInputBorder(),
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    isDense: true,
-                  ),
-                  style: const TextStyle(fontSize: 14),
-                  onChanged: (v) => controller.newTagText.value = v,
-                  onSubmitted: (v) => controller.addTag(v),
-                ),
+                child: Obx(() => FTextField(
+                      control: .managed(
+                        initial: TextEditingValue(
+                          text: controller.newTagText.value,
+                        ),
+                        onChange: (v) =>
+                            controller.newTagText.value = v.text,
+                      ),
+                      hint: '添加标签...',
+                      size: .sm,
+                      onSubmit: (v) => controller.addTag(v),
+                    )),
               ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                icon: const Icon(Icons.add, size: 20),
-                onPressed: () =>
+              SizedBox(width: AppTheme.spacing.sm),
+              FButton.icon(
+                variant: .outline,
+                size: .sm,
+                onPress: () =>
                     controller.addTag(controller.newTagText.value),
-                style: IconButton.styleFrom(
-                  minimumSize: const Size(36, 36),
-                ),
+                child: const Icon(FLucideIcons.plus, size: 18),
               ),
+
               // 自动打标签按钮
-              if (controller.canGenerateTags)
-                IconButton.filled(
-                  icon: controller.isGeneratingTags
+              if (controller.canGenerateTags) ...[
+                SizedBox(width: AppTheme.spacing.xs),
+                FButton.icon(
+                  variant: .outline,
+                  size: .sm,
+                  onPress: controller.isGeneratingTags
+                      ? null
+                      : () => controller.generateTags(),
+                  child: controller.isGeneratingTags
                       ? const SizedBox(
                           width: 16,
                           height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
+                          child: FCircularProgress(size: .sm),
                         )
-                      : const Icon(Icons.auto_awesome, size: 18),
-                  onPressed: controller.isGeneratingTags
-                      ? null
-                      : () => controller.generateTags(),
-                  tooltip: '自动打标签',
-                  style: IconButton.styleFrom(
-                    backgroundColor: Theme.of(Get.context!)
-                        .colorScheme
-                        .tertiaryContainer,
-                    minimumSize: const Size(36, 36),
-                  ),
+                      : const Icon(FLucideIcons.sparkles, size: 16),
                 ),
+              ],
             ],
           ),
         ],
@@ -166,28 +200,34 @@ class NoteEditorPage extends StatelessWidget {
     });
   }
 
-  Widget _buildEditor(NoteEditorController controller) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: TextField(
-        controller: TextEditingController(
-            text: controller.contentController.value)
-          ..selection = TextSelection.fromPosition(TextPosition(
-              offset: controller.contentController.value.length)),
-        decoration: const InputDecoration(
-          hintText: '在此输入 Markdown 内容...',
-          border: OutlineInputBorder(),
-          alignLabelWithHint: true,
-        ),
-        maxLines: null,
-        expands: true,
-        textAlignVertical: TextAlignVertical.top,
-        onChanged: (v) => controller.contentController.value = v,
-      ),
-    );
+  /// Markdown 编辑区。
+  Widget _buildEditor(
+    BuildContext context,
+    NoteEditorController controller,
+  ) {
+    return Obx(() => Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: FTextField(
+                control: .managed(
+                  initial: TextEditingValue(
+                    text: controller.contentController.value,
+                  ),
+                  onChange: (v) =>
+                      controller.contentController.value = v.text,
+                ),
+                hint: '在此输入 Markdown 内容...',
+                maxLines: null,
+                expands: true,
+                size: .md,
+              ),
+            ));
   }
 
-  Widget _buildPreview(NoteEditorController controller) {
+  /// Markdown 预览区。
+  Widget _buildPreview(
+    BuildContext context,
+    NoteEditorController controller,
+  ) {
     return Obx(() {
       final content = controller.contentController.value;
       if (content.isEmpty) {

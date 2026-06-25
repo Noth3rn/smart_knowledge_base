@@ -1,11 +1,13 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:flutter/widgets.dart';
+import 'package:forui/forui.dart';
+import 'package:get/get.dart' hide ContextExtensionss;
 
+import '../../theme/app_theme.dart';
 import 'model_download_controller.dart';
 
 /// 模型下载页面——首次运行时引导用户下载设备端嵌入模型。
 ///
-/// 用户需要提供模型文件 (.tflite) 和分词器 (.model/.json) 的下载 URL。
+/// 用户需要提供模型文件 (.tflite) 和分词器 (.model) 的下载 URL。
 /// 可从 HuggingFace、Google Edge AI 等模型托管平台获取。
 class ModelDownloadPage extends StatelessWidget {
   const ModelDownloadPage({super.key});
@@ -16,13 +18,15 @@ class ModelDownloadPage extends StatelessWidget {
 
     return PopScope(
       canPop: !controller.isDownloading,
-      child: Scaffold(
-        appBar: AppBar(
+      child: FScaffold(
+        header: FHeader(
           title: const Text('下载嵌入模型'),
-          centerTitle: true,
-          automaticallyImplyLeading: !controller.isDownloading,
+          suffixes: [
+            if (!controller.isDownloading)
+              FHeaderAction.x(onPress: () => Navigator.of(context).pop()),
+          ],
         ),
-        body: SafeArea(
+        child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
             child: Obx(() => _buildBody(context, controller)),
@@ -32,141 +36,114 @@ class ModelDownloadPage extends StatelessWidget {
     );
   }
 
-  Widget _buildBody(BuildContext context, ModelDownloadController controller) {
-    switch (controller.status) {
-      case DownloadStatus.idle:
-        return _buildIdle(context, controller);
-      case DownloadStatus.downloadingModel:
-      case DownloadStatus.downloadingTokenizer:
-        return _buildDownloading(context, controller);
-      case DownloadStatus.completed:
-        return _buildCompleted(context, controller);
-      case DownloadStatus.failed:
-        return _buildFailed(context, controller);
-    }
+  Widget _buildBody(
+    BuildContext context,
+    ModelDownloadController controller,
+  ) {
+    return switch (controller.status) {
+      DownloadStatus.idle => _buildIdle(context, controller),
+      DownloadStatus.downloadingModel ||
+      DownloadStatus.downloadingTokenizer =>
+        _buildDownloading(context, controller),
+      DownloadStatus.completed => _buildCompleted(context, controller),
+      DownloadStatus.failed => _buildFailed(context, controller),
+    };
   }
 
   /// 初始状态：说明 + URL 输入框 + 下载/跳过按钮。
   Widget _buildIdle(BuildContext context, ModelDownloadController controller) {
-    final theme = Theme.of(context);
+    final theme = context.theme;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // 图标和说明
         Icon(
-          Icons.download_for_offline_outlined,
+          FLucideIcons.download,
           size: 64,
-          color: theme.colorScheme.primary,
+          color: theme.colors.primary,
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: AppTheme.spacing.xl),
         Text(
           '设备端语义搜索',
-          style: theme.textTheme.headlineSmall,
+          style: theme.typography.xl2.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: AppTheme.spacing.md),
         Text(
           '需要下载嵌入模型（.tflite）和分词器（.model）两个文件。\n'
           '请从 HuggingFace 等平台获取文件 URL 后填入下方。',
           textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+          style: theme.typography.md.copyWith(
+            color: theme.colors.mutedForeground,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: AppTheme.spacing.sm),
         Text(
           '可随时跳过，之后在设置页面重新下载。',
           textAlign: TextAlign.center,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+          style: theme.typography.sm.copyWith(
+            color: theme.colors.mutedForeground,
           ),
         ),
 
-        const SizedBox(height: 28),
+        SizedBox(height: AppTheme.spacing.lg),
 
         // 模型 URL 输入
-        TextField(
-          controller: controller.modelUrlController,
-          decoration: InputDecoration(
-            labelText: '模型文件 URL (.tflite)',
-            hintText: 'https://huggingface.co/.../embedding_model.tflite',
-            border: const OutlineInputBorder(),
-            prefixIcon: const Icon(Icons.link),
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () => controller.modelUrlController.clear(),
-            ),
-          ),
+        FTextField(
+          control: .managed(controller: controller.modelUrlController),
+          label: const Text('模型文件 URL (.tflite)'),
+          hint: 'https://huggingface.co/.../embedding_model.tflite',
           keyboardType: TextInputType.url,
           enabled: !controller.isDownloading,
-          onChanged: (_) {
-            // 触发 Obx 更新按钮状态
-          },
+          size: .md,
         ),
 
-        const SizedBox(height: 16),
+        SizedBox(height: AppTheme.spacing.lg),
 
         // 分词器 URL 输入
-        TextField(
-          controller: controller.tokenizerUrlController,
-          decoration: InputDecoration(
-            labelText: '分词器 URL (.model / .json)',
-            hintText: 'https://huggingface.co/.../tokenizer.model',
-            border: const OutlineInputBorder(),
-            prefixIcon: const Icon(Icons.link),
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () => controller.tokenizerUrlController.clear(),
-            ),
-          ),
+        FTextField(
+          control: .managed(controller: controller.tokenizerUrlController),
+          label: const Text('分词器 URL (.model / .json)'),
+          hint: 'https://huggingface.co/.../tokenizer.model',
           keyboardType: TextInputType.url,
           enabled: !controller.isDownloading,
-          onChanged: (_) {},
+          size: .md,
         ),
 
-        const SizedBox(height: 16),
+        SizedBox(height: AppTheme.spacing.lg),
 
         // HuggingFace Token 输入
-        TextField(
-          controller: controller.hfTokenController,
-          decoration: InputDecoration(
-            labelText: 'HuggingFace Token（可选，gated 模型需要）',
-            hintText: 'hf_xxxxxxxxxxxx',
-            border: const OutlineInputBorder(),
-            prefixIcon: const Icon(Icons.key),
-            helperText: '在 huggingface.co/settings/tokens 创建',
-            helperMaxLines: 1,
-            suffixIcon: IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () => controller.hfTokenController.clear(),
-            ),
-          ),
+        FTextField(
+          control: .managed(controller: controller.hfTokenController),
+          label: const Text('HuggingFace Token（可选，gated 模型需要）'),
+          hint: 'hf_xxxxxxxxxxxx',
+          description:
+              const Text('在 huggingface.co/settings/tokens 创建'),
           obscureText: true,
           enabled: !controller.isDownloading,
-          onChanged: (_) {},
+          size: .md,
         ),
 
-        const SizedBox(height: 32),
+        SizedBox(height: AppTheme.spacing.xl),
 
         // 操作按钮
-        SizedBox(
-          height: 48,
-          child: FilledButton.icon(
-            onPressed: controller.canStartDownload
-                ? () => controller.startDownload()
-                : null,
-            icon: const Icon(Icons.download),
-            label: const Text('下载模型'),
-          ),
+        FButton(
+          onPress: controller.canStartDownload
+              ? () => controller.startDownload()
+              : null,
+          prefix: const Icon(FLucideIcons.download),
+          size: .lg,
+          child: const Text('下载模型'),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 40,
-          child: TextButton(
-            onPressed: () => _handleSkip(controller),
-            child: const Text('跳过'),
-          ),
+        SizedBox(height: AppTheme.spacing.md),
+        FButton(
+          variant: .ghost,
+          size: .lg,
+          child: const Text('跳过'),
+          onPress: () => _handleSkip(controller),
         ),
       ],
     );
@@ -174,7 +151,10 @@ class ModelDownloadPage extends StatelessWidget {
 
   /// 下载中：进度条 + 状态文字 + 取消按钮。
   Widget _buildDownloading(
-      BuildContext context, ModelDownloadController controller) {
+    BuildContext context,
+    ModelDownloadController controller,
+  ) {
+    final theme = context.theme;
     final overallProgress =
         (controller.modelProgress + controller.tokenizerProgress) / 200.0;
 
@@ -182,39 +162,38 @@ class ModelDownloadPage extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
-          Icons.cloud_download_outlined,
+          FLucideIcons.cloudDownload,
           size: 72,
-          color: Theme.of(context).colorScheme.primary,
+          color: theme.colors.primary,
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: AppTheme.spacing.xl),
         Text(
           controller.statusMessage,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 32),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: overallProgress.isNaN ? null : overallProgress,
-            minHeight: 8,
+          style: theme.typography.lg.copyWith(
+            fontWeight: FontWeight.w500,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: AppTheme.spacing.xxl),
+        FDeterminateProgress(
+          value: overallProgress.isNaN ? 0 : overallProgress,
+        ),
+        SizedBox(height: AppTheme.spacing.md),
         Text(
           '${(overallProgress * 100).clamp(0, 100).toStringAsFixed(0)}%',
-          style: Theme.of(context).textTheme.bodyLarge,
+          style: theme.typography.lg,
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: AppTheme.spacing.sm),
         Text(
           '模型: ${controller.modelProgress}%  |  分词器: ${controller.tokenizerProgress}%',
-          style: Theme.of(context).textTheme.bodySmall,
+          style: theme.typography.sm,
         ),
-        const SizedBox(height: 48),
-        OutlinedButton.icon(
-          onPressed: () => controller.cancel(),
-          icon: const Icon(Icons.cancel_outlined),
-          label: const Text('取消下载'),
+        SizedBox(height: AppTheme.spacing.xxl),
+        FButton(
+          variant: .outline,
+          prefix: const Icon(FLucideIcons.circleX),
+          child: const Text('取消下载'),
+          onPress: () => controller.cancel(),
         ),
       ],
     );
@@ -222,92 +201,98 @@ class ModelDownloadPage extends StatelessWidget {
 
   /// 下载完成。
   Widget _buildCompleted(
-      BuildContext context, ModelDownloadController controller) {
+    BuildContext context,
+    ModelDownloadController controller,
+  ) {
+    final theme = context.theme;
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
-          Icons.check_circle_outline,
+          FLucideIcons.circleCheck,
           size: 72,
-          color: Theme.of(context).colorScheme.primary,
+          color: theme.colors.primary,
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: AppTheme.spacing.xl),
         Text(
           '下载完成！',
-          style: Theme.of(context).textTheme.headlineSmall,
+          style: theme.typography.xl2.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: AppTheme.spacing.lg),
         Text(
           controller.statusMessage,
           textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodyLarge,
+          style: theme.typography.lg,
         ),
-        const SizedBox(height: 48),
-        SizedBox(
-          height: 48,
-          child: FilledButton.icon(
-            onPressed: () async {
-              await controller.continueWithModel();
-              if (context.mounted) {
-                Navigator.of(context).pop();
-              }
-            },
-            icon: const Icon(Icons.arrow_forward),
-            label: const Text('继续'),
-          ),
+        SizedBox(height: AppTheme.spacing.xxl),
+        FButton(
+          prefix: const Icon(FLucideIcons.arrowRight),
+          size: .lg,
+          onPress: () async {
+            await controller.continueWithModel();
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
+          },
+          child: const Text('继续'),
         ),
       ],
     );
   }
 
   /// 下载失败：错误详情 + 重试/跳过。
-  Widget _buildFailed(BuildContext context, ModelDownloadController controller) {
-    final theme = Theme.of(context);
+  Widget _buildFailed(
+    BuildContext context,
+    ModelDownloadController controller,
+  ) {
+    final theme = context.theme;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
-          Icons.error_outline,
+          FLucideIcons.alertTriangle,
           size: 72,
-          color: theme.colorScheme.error,
+          color: theme.colors.destructive,
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: AppTheme.spacing.xl),
         Text(
           '下载失败',
-          style: theme.textTheme.headlineSmall,
+          style: theme.typography.xl2.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: AppTheme.spacing.lg),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(12),
+          padding: AppTheme.edgeInsets.allMd,
           decoration: BoxDecoration(
-            color: theme.colorScheme.errorContainer.withAlpha(80),
-            borderRadius: BorderRadius.circular(8),
+            color: theme.colors.destructive.withAlpha(30),
+            borderRadius: BorderRadius.circular(AppTheme.radius.md),
           ),
           child: Text(
             controller.statusMessage,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onErrorContainer,
+            style: theme.typography.sm.copyWith(
+              color: theme.colors.destructive,
             ),
           ),
         ),
-        const SizedBox(height: 32),
-        SizedBox(
-          height: 48,
-          child: FilledButton.icon(
-            onPressed: () => controller.retry(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('重试'),
-          ),
+        SizedBox(height: AppTheme.spacing.xxl),
+        FButton(
+          prefix: const Icon(FLucideIcons.refreshCw),
+          size: .lg,
+          onPress: () => controller.retry(),
+          child: const Text('重试'),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
-          height: 40,
-          child: TextButton(
-            onPressed: () => _handleSkip(controller),
-            child: const Text('跳过'),
-          ),
+        SizedBox(height: AppTheme.spacing.md),
+        FButton(
+          variant: .ghost,
+          size: .lg,
+          child: const Text('跳过'),
+          onPress: () => _handleSkip(controller),
         ),
       ],
     );

@@ -1,47 +1,62 @@
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:flutter/widgets.dart';
+import 'package:forui/forui.dart';
+import 'package:get/get.dart' hide ContextExtensionss;
 
 import '../../routes/app_routes.dart';
+import '../../theme/app_theme.dart';
 import 'note_search_controller.dart';
 
+/// 语义/关键词搜索页。
+///
+/// 输入查询文本后自动触发搜索（300ms 防抖），
+/// 在语义搜索可用时优先使用语义搜索，否则降级为关键词搜索。
 class SearchPage extends StatelessWidget {
   const SearchPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final controller = Get.put(NoteSearchController());
-    final theme = Theme.of(context);
+    final theme = context.theme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: TextField(
-          controller: controller.queryController,
-          autofocus: true,
-          style: theme.textTheme.titleMedium,
-          decoration: InputDecoration(
-            hintText: '搜索笔记标题或内容...',
-            border: InputBorder.none,
-            suffixIcon: Obx(() {
-              if (controller.queryText.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return IconButton(
-                icon: const Icon(Icons.clear),
-                onPressed: () => controller.clear(),
-              );
-            }),
+    return FScaffold(
+      header: FHeader.nested(
+        title: FTextField(
+          control: .managed(
+            controller: controller.queryController,
+            onChange: (v) => controller.onQueryChanged(v.text),
           ),
-          onChanged: controller.onQueryChanged,
+          hint: '搜索笔记标题或内容...',
+          autofocus: true,
+          prefixBuilder: (context, style, variants) =>
+              Icon(FLucideIcons.search, size: 18, color: theme.colors.mutedForeground),
+          suffixBuilder: (context, style, variants) => Obx(() {
+            if (controller.queryText.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            return GestureDetector(
+              onTap: () => controller.clear(),
+              child: Icon(
+                FLucideIcons.x,
+                size: 18,
+                color: theme.colors.mutedForeground,
+              ),
+            );
+          }),
         ),
+        prefixes: [
+          FHeaderAction.back(onPress: () => Get.back()),
+        ],
       ),
-      body: Obx(() => _buildBody(context, controller)),
+      child: Obx(() => _buildBody(context, controller)),
     );
   }
 
   Widget _buildBody(BuildContext context, NoteSearchController controller) {
+    final theme = context.theme;
+
     // 搜索中
     if (controller.isSearching) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: FCircularProgress());
     }
 
     // 尚未搜索
@@ -51,19 +66,16 @@ class SearchPage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.search,
+              FLucideIcons.search,
               size: 64,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurfaceVariant
-                  .withAlpha(100),
+              color: theme.colors.mutedForeground,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: AppTheme.spacing.lg),
             Text(
               '输入关键词进行搜索',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              style: theme.typography.lg.copyWith(
+                color: theme.colors.mutedForeground,
+              ),
             ),
           ],
         ),
@@ -77,26 +89,20 @@ class SearchPage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.search_off,
+              FLucideIcons.searchX,
               size: 64,
-              color: Theme.of(context)
-                  .colorScheme
-                  .onSurfaceVariant
-                  .withAlpha(100),
+              color: theme.colors.mutedForeground,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: AppTheme.spacing.sm),
             Text(
               '未找到相关笔记',
-              style: Theme.of(context).textTheme.bodyLarge,
+              style: theme.typography.lg,
             ),
             if (controller.searchMode == SearchMode.semantic)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  '尝试使用其他关键词',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+              Text(
+                '尝试使用其他关键词',
+                style: theme.typography.sm.copyWith(
+                  color: theme.colors.mutedForeground,
                 ),
               ),
           ],
@@ -112,21 +118,20 @@ class SearchPage extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            color: Theme.of(context).colorScheme.secondaryContainer,
+            color: theme.colors.secondary,
             child: Row(
               children: [
                 Icon(
-                  Icons.info_outline,
+                  FLucideIcons.info,
                   size: 16,
-                  color: Theme.of(context).colorScheme.onSecondaryContainer,
+                  color: theme.colors.secondaryForeground,
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: AppTheme.spacing.sm),
                 Text(
                   '当前为关键词搜索模式',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color:
-                            Theme.of(context).colorScheme.onSecondaryContainer,
-                      ),
+                  style: theme.typography.sm.copyWith(
+                    color: theme.colors.secondaryForeground,
+                  ),
                 ),
               ],
             ),
@@ -134,10 +139,9 @@ class SearchPage extends StatelessWidget {
 
         // 结果列表
         Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: controller.results.length,
-            itemBuilder: (context, index) {
+          child: FTileGroup.builder(
+            count: controller.results.length,
+            tileBuilder: (context, index) {
               final result = controller.results[index];
               return _buildResultTile(context, result, controller);
             },
@@ -147,76 +151,73 @@ class SearchPage extends StatelessWidget {
     );
   }
 
+  /// 构建单条搜索结果。
   Widget _buildResultTile(
     BuildContext context,
     SearchResult result,
     NoteSearchController controller,
   ) {
     final note = result.note;
-    final theme = Theme.of(context);
+    final theme = context.theme;
 
-    return ListTile(
+    return FTile(
       title: Text(
         note.title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.titleMedium,
+        style: theme.typography.lg.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
       ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      subtitle: Text(
+        note.content.length > 80
+            ? '${note.content.substring(0, 80)}...'
+            : note.content,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        style: theme.typography.sm.copyWith(
+          color: theme.colors.mutedForeground,
+        ),
+      ),
+      details: Row(
         children: [
-          const SizedBox(height: 4),
-          Text(
-            note.content.length > 80
-                ? '${note.content.substring(0, 80)}...'
-                : note.content,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          // 语义模式显示相似度
+          if (controller.searchMode == SearchMode.semantic) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colors.primary,
+                borderRadius:
+                    BorderRadius.circular(AppTheme.radius.sm),
+              ),
+              child: Text(
+                '${(result.similarity * 100).toStringAsFixed(0)}%',
+                style: theme.typography.xs.copyWith(
+                  color: theme.colors.primaryForeground,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              // 语义模式显示相似度
-              if (controller.searchMode == SearchMode.semantic) ...[
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    '${(result.similarity * 100).toStringAsFixed(0)}%',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-              ],
-              // 嵌入后端标识
-              if (note.embeddingBackend != null &&
-                  note.embeddingBackend!.isNotEmpty)
-                Text(
-                  note.embeddingBackend!,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.outline,
-                  ),
-                ),
-            ],
-          ),
+            SizedBox(width: AppTheme.spacing.sm),
+          ],
+
+          // 嵌入后端标识
+          if (note.embeddingBackend != null &&
+              note.embeddingBackend!.isNotEmpty)
+            Text(
+              note.embeddingBackend!,
+              style: theme.typography.xs.copyWith(
+                color: theme.colors.mutedForeground,
+              ),
+            ),
         ],
       ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () async {
+      suffix: const Icon(FLucideIcons.chevronRight),
+      onPress: () async {
         await Get.toNamed(
           Routes.noteDetail,
-          parameters: {'id': '${note.id}'},
+          parameters: {Routes.paramId: '${note.id}'},
         );
-        // 返回后刷新搜索结果（笔记可能被编辑/删除）
+        // 返回后刷新搜索结果
         if (controller.queryController.text.trim().isNotEmpty) {
           controller.search(controller.queryController.text.trim());
         }
