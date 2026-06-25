@@ -135,6 +135,30 @@ class NoteEditorPage extends StatelessWidget {
                   minimumSize: const Size(36, 36),
                 ),
               ),
+              // 自动打标签按钮
+              if (controller.canGenerateTags)
+                IconButton.filled(
+                  icon: controller.isGeneratingTags
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.auto_awesome, size: 18),
+                  onPressed: controller.isGeneratingTags
+                      ? null
+                      : () => controller.generateTags(),
+                  tooltip: '自动打标签',
+                  style: IconButton.styleFrom(
+                    backgroundColor: Theme.of(Get.context!)
+                        .colorScheme
+                        .tertiaryContainer,
+                    minimumSize: const Size(36, 36),
+                  ),
+                ),
             ],
           ),
         ],

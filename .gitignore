@@ -43,3 +43,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# AI model files (large binaries, download separately)
+assets/models/*.tflite
+assets/models/*.model

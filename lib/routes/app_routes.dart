@@ -5,6 +5,7 @@ import '../features/note_editor/note_editor_page.dart';
 import '../features/note_detail/note_detail_page.dart';
 import '../features/search/search_page.dart';
 import '../features/settings/settings_page.dart';
+import '../features/model_download/model_download_page.dart';
 
 abstract class Routes {
   static const noteList = '/';
@@ -12,6 +13,7 @@ abstract class Routes {
   static const noteDetail = '/detail';
   static const search = '/search';
   static const settings = '/settings';
+  static const modelDownload = '/model-download';
 }
 
 final appPages = [
@@ -20,4 +22,9 @@ final appPages = [
   GetPage(name: Routes.noteDetail, page: () => const NoteDetailPage()),
   GetPage(name: Routes.search, page: () => const SearchPage()),
   GetPage(name: Routes.settings, page: () => const SettingsPage()),
+  GetPage(
+    name: Routes.modelDownload,
+    page: () => const ModelDownloadPage(),
+    fullscreenDialog: true,
+  ),
 ];

@@ -37,4 +37,34 @@ extension NotesDao on AppDatabase {
           ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
         .get();
   }
+
+  /// 更新笔记的嵌入向量和来源后端。
+  ///
+  /// [embeddingBytes] — Float64List 编码后的 Uint8List。
+  /// [backendName] — 嵌入来源后端，写入 embedding_backend 列。
+  ///
+  /// 使用 [NotesCompanion] 仅更新 embedding 和 embeddingBackend 两列，
+  /// 不覆盖 title、content 等其他字段。
+  Future<int> updateEmbedding(
+    int noteId,
+    Uint8List embeddingBytes,
+    String backendName,
+  ) {
+    return (update(notes)..where((t) => t.id.equals(noteId))).write(
+      NotesCompanion(
+        embedding: Value(embeddingBytes),
+        embeddingBackend: Value(backendName),
+      ),
+    );
+  }
+
+  /// 获取所有尚未计算嵌入向量的笔记。
+  Future<List<Note>> getNotesWithoutEmbedding() {
+    return (select(notes)..where((t) => t.embedding.isNull())).get();
+  }
+
+  /// 获取所有已有嵌入向量的笔记（供语义搜索使用）。
+  Future<List<Note>> getNotesWithEmbedding() {
+    return (select(notes)..where((t) => t.embedding.isNotNull())).get();
+  }
 }
