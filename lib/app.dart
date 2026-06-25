@@ -20,6 +20,7 @@ class App extends StatelessWidget {
       theme: theme.toApproximateMaterialTheme(),
       localizationsDelegates: FLocalizations.localizationsDelegates,
       supportedLocales: FLocalizations.supportedLocales,
+      debugShowCheckedModeBanner: false,
       builder: (_, child) => FTheme(
         data: theme,
         child: FToaster(child: FTooltipGroup(child: child!)),
