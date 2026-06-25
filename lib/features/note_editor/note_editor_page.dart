@@ -29,8 +29,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
     super.initState();
     _controller = Get.put(NoteEditorController());
     _titleTec = TextEditingController(text: _controller.titleController.value);
-    _contentTec =
-        TextEditingController(text: _controller.contentController.value);
+    _contentTec = TextEditingController(text: _controller.contentController.value);
 
     final id = Get.parameters['id'];
     if (id != null && _controller.noteId == null) {
@@ -57,9 +56,10 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
       child: SafeArea(
         child: Stack(
           children: [
-            Obx(() => _controller.isPreview
-                ? _buildPreview(context, theme)
-                : _buildEditContent(context, theme)),
+            Obx(
+              () =>
+                  _controller.isPreview ? _buildPreview(context, theme) : _buildEditContent(context, theme),
+            ),
             _buildTopBar(theme),
           ],
         ),
@@ -78,11 +78,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
           _buildCircleBtn(
             theme: theme,
             onTap: () => Get.back(),
-            child: Icon(
-              FLucideIcons.chevronLeft,
-              size: 18,
-              color: theme.colors.foreground,
-            ),
+            child: Icon(FLucideIcons.chevronLeft, size: 18, color: theme.colors.foreground),
           ),
           _buildCapsuleGroup(theme),
         ],
@@ -91,20 +87,14 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
   }
 
   /// 圆形毛玻璃按钮（背景模糊 + 半透明 + 细边框）。
-  Widget _buildCircleBtn({
-    required FThemeData theme,
-    required VoidCallback onTap,
-    required Widget child,
-  }) {
+  Widget _buildCircleBtn({required FThemeData theme, required VoidCallback onTap, required Widget child}) {
     return GestureDetector(
       onTap: onTap,
       child: FrostedContainer(
         width: 40,
         height: 40,
         blurSigma: AppTheme.frost.blurSigma,
-        backgroundColor: theme.colors.background.withValues(
-          alpha: AppTheme.frost.btnAlpha,
-        ),
+        backgroundColor: theme.colors.background.withValues(alpha: AppTheme.frost.btnAlpha),
         border: Border.all(
           color: theme.colors.border.withValues(alpha: 0.35),
           width: AppTheme.frost.borderWidth,
@@ -120,9 +110,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
   Widget _buildCapsuleGroup(FThemeData theme) {
     return FrostedContainer(
       blurSigma: AppTheme.frost.blurSigma,
-      backgroundColor: theme.colors.background.withValues(
-        alpha: AppTheme.frost.barAlpha,
-      ),
+      backgroundColor: theme.colors.background.withValues(alpha: AppTheme.frost.barAlpha),
       borderRadius: BorderRadius.circular(AppTheme.radius.full),
       border: Border.all(
         color: theme.colors.border.withValues(alpha: 0.35),
@@ -132,54 +120,36 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // 预览 / 编辑切换
-          Obx(() => GestureDetector(
-                onTap: () => _controller.togglePreview(),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  child: Icon(
-                    _controller.isPreview
-                        ? FLucideIcons.pencil
-                        : FLucideIcons.eye,
-                    size: 18,
-                    color: theme.colors.foreground,
-                  ),
+          Obx(
+            () => GestureDetector(
+              onTap: () => _controller.togglePreview(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Icon(
+                  _controller.isPreview ? FLucideIcons.pencil : FLucideIcons.eye,
+                  size: 18,
+                  color: theme.colors.foreground,
                 ),
-              )),
+              ),
+            ),
+          ),
 
           // 分隔线
-          Container(
-            width: 0.5,
-            height: 20,
-            color: theme.colors.border.withValues(alpha: 0.35),
-          ),
+          Container(width: 0.5, height: 20, color: theme.colors.border.withValues(alpha: 0.35)),
 
           // 保存 / 保存中
           Obx(() {
             if (_controller.isSaving) {
               return const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: FCircularProgress(size: .sm),
-                ),
+                child: SizedBox(width: 18, height: 18, child: FCircularProgress(size: .sm)),
               );
             }
             return GestureDetector(
               onTap: () => _controller.save(),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                child: Icon(
-                  FLucideIcons.check,
-                  size: 18,
-                  color: theme.colors.foreground,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Icon(FLucideIcons.check, size: 18, color: theme.colors.foreground),
               ),
             );
           }),
@@ -199,31 +169,20 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
     required TextStyle hintStyle,
   }) => .delta(
     // 去掉背景填充色
-    color: FVariantsValueDelta.delta([
-      FVariantValueDeltaOperation.all(null),
-    ]),
+    color: FVariantsValueDelta.delta([FVariantValueDeltaOperation.all(null)]),
     // 去掉所有状态下的边框
-    border: FVariantsValueDelta.delta([
-      FVariantValueDeltaOperation.all(InputBorder.none),
-    ]),
+    border: FVariantsValueDelta.delta([FVariantValueDeltaOperation.all(InputBorder.none)]),
     // 去掉内边距，让文字与周围内容对齐
     contentPadding: const EdgeInsetsGeometryDelta.value(EdgeInsets.zero),
     // 去掉最小高度限制
     constraints: const BoxConstraints(),
     // 覆盖输入文字样式
-    contentTextStyle: FVariants<
-      FTextFieldVariantConstraint,
-      FTextFieldVariant,
-      TextStyle,
-      TextStyleDelta
-    >.all(textStyle),
+    contentTextStyle:
+        FVariants<FTextFieldVariantConstraint, FTextFieldVariant, TextStyle, TextStyleDelta>.all(textStyle),
     // 覆盖 hint 文字样式
-    hintTextStyle: FVariants<
-      FTextFieldVariantConstraint,
-      FTextFieldVariant,
-      TextStyle,
-      TextStyleDelta
-    >.all(hintStyle),
+    hintTextStyle: FVariants<FTextFieldVariantConstraint, FTextFieldVariant, TextStyle, TextStyleDelta>.all(
+      hintStyle,
+    ),
   );
 
   // ── 编辑模式 ───────────────────────────────────────────────────────────────
@@ -273,14 +232,8 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
           ),
           style: bareStyle(
             theme,
-            textStyle: theme.typography.md.copyWith(
-              height: 1.75,
-              color: theme.colors.foreground,
-            ),
-            hintStyle: theme.typography.md.copyWith(
-              height: 1.75,
-              color: theme.colors.mutedForeground,
-            ),
+            textStyle: theme.typography.md.copyWith(height: 1.75, color: theme.colors.foreground),
+            hintStyle: theme.typography.md.copyWith(height: 1.75, color: theme.colors.mutedForeground),
           ),
           hint: '开始写作...',
           maxLines: null,
@@ -294,7 +247,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
     return Obx(() {
       return Wrap(
         spacing: AppTheme.spacing.sm,
-        runSpacing: AppTheme.spacing.xs,
+        runSpacing: AppTheme.spacing.sm,
         children: [
           ..._controller.tags.map(
             (tag) => GestureDetector(
@@ -306,11 +259,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
                   children: [
                     Text(tag),
                     const SizedBox(width: 4),
-                    Icon(
-                      FLucideIcons.x,
-                      size: 12,
-                      color: theme.colors.mutedForeground,
-                    ),
+                    Icon(FLucideIcons.x, size: 12, color: theme.colors.mutedForeground),
                   ],
                 ),
               ),
@@ -319,18 +268,12 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
 
           // AI 标签按钮——始终可见，生成中显示 loading
           GestureDetector(
-            onTap: _controller.isGeneratingTags
-                ? null
-                : () => _controller.generateTags(),
+            onTap: _controller.isGeneratingTags ? null : () => _controller.generateTags(),
             child: FBadge(
               variant: .outline,
               child: _controller.isGeneratingTags
-                  ? const SizedBox(
-                      width: 12,
-                      height: 12,
-                      child: FCircularProgress(size: .sm),
-                    )
-                  : const Icon(FLucideIcons.sparkles, size: 12),
+                  ? const SizedBox(width: 12, height: 12, child: FCircularProgress(size: .sm))
+                  : const Icon(FLucideIcons.sparkles, size: 12).paddingSymmetric(vertical: 3),
             ),
           ),
 
@@ -339,7 +282,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
             onTap: () => _showAddTagDialog(context),
             child: FBadge(
               variant: .outline,
-              child: const Icon(FLucideIcons.plus, size: 12),
+              child: const Icon(FLucideIcons.plus, size: 12).paddingSymmetric(vertical: 3),
             ),
           ),
         ],
@@ -355,15 +298,12 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Obx(() => Text(
-                _controller.titleController.value.isEmpty
-                    ? '无标题'
-                    : _controller.titleController.value,
-                style: theme.typography.xl3.copyWith(
-                  fontWeight: FontWeight.bold,
-                  height: 1.4,
-                ),
-              )),
+          Obx(
+            () => Text(
+              _controller.titleController.value.isEmpty ? '无标题' : _controller.titleController.value,
+              style: theme.typography.xl3.copyWith(fontWeight: FontWeight.bold, height: 1.4),
+            ),
+          ),
 
           const SizedBox(height: 12),
 
@@ -373,9 +313,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
             return Wrap(
               spacing: AppTheme.spacing.sm,
               runSpacing: AppTheme.spacing.xs,
-              children: tags
-                  .map((t) => FBadge(variant: .outline, child: Text(t)))
-                  .toList(),
+              children: tags.map((t) => FBadge(variant: .outline, child: Text(t))).toList(),
             );
           }),
 
@@ -386,17 +324,9 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
           Obx(() {
             final content = _controller.contentController.value;
             if (content.isEmpty) {
-              return Text(
-                '暂无内容',
-                style: theme.typography.md.copyWith(
-                  color: theme.colors.mutedForeground,
-                ),
-              );
+              return Text('暂无内容', style: theme.typography.md.copyWith(color: theme.colors.mutedForeground));
             }
-            return MarkdownBody(
-              data: content,
-              styleSheet: _buildMarkdownStyle(theme),
-            );
+            return MarkdownBody(data: content, styleSheet: _buildMarkdownStyle(theme));
           }),
         ],
       ),
@@ -416,9 +346,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
       h3: theme.typography.lg.copyWith(fontWeight: FontWeight.w600),
       h4: theme.typography.md.copyWith(fontWeight: FontWeight.w600),
       blockquoteDecoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(color: theme.colors.border, width: 3),
-        ),
+        border: Border(left: BorderSide(color: theme.colors.border, width: 3)),
       ),
       blockquotePadding: const EdgeInsets.only(left: 12),
       code: theme.typography.sm.copyWith(
@@ -447,10 +375,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
           animation: animation,
           title: const Text('添加标签'),
           body: FTextField(
-            control: .managed(
-              initial: TextEditingValue.empty,
-              onChange: (v) => newTag = v.text,
-            ),
+            control: .managed(initial: TextEditingValue.empty, onChange: (v) => newTag = v.text),
             hint: '输入标签名',
             autofocus: true,
             onSubmit: (v) {

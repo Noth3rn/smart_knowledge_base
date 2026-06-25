@@ -207,7 +207,7 @@ class _SettingsPageState extends State<SettingsPage> {
           onChange: (v) => _controller.saveModelName(v.text),
         ),
         label: const Text('模型名称'),
-        hint: 'deepseek-chat',
+        hint: 'deepseek-v4-flash',
         size: .md,
       ),
     );
