@@ -95,53 +95,57 @@ class _NoteListPageState extends State<NoteListPage> {
             ),
           ),
           const Spacer(),
-          _buildFrostedCircleBtn(
-            theme: theme,
-            onTap: () => Get.toNamed(Routes.search),
-            child: Icon(
-              FLucideIcons.search,
-              size: 18,
-              color: theme.colors.foreground,
+          // 胶囊形毛玻璃按钮组——与 editor 页右上角一致
+          FrostedContainer(
+            blurSigma: AppTheme.frost.blurSigma,
+            backgroundColor: theme.colors.background.withValues(
+              alpha: AppTheme.frost.barAlpha,
             ),
-          ),
-          SizedBox(width: AppTheme.spacing.sm),
-          _buildFrostedCircleBtn(
-            theme: theme,
-            onTap: () => Get.toNamed(Routes.settings),
-            child: Icon(
-              FLucideIcons.settings,
-              size: 18,
-              color: theme.colors.foreground,
+            borderRadius: BorderRadius.circular(AppTheme.radius.full),
+            border: Border.all(
+              color: theme.colors.border.withValues(alpha: 0.35),
+              width: AppTheme.frost.borderWidth,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () => Get.toNamed(Routes.search),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    child: Icon(
+                      FLucideIcons.search,
+                      size: 18,
+                      color: theme.colors.foreground,
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 0.5,
+                  height: 20,
+                  color: theme.colors.border.withValues(alpha: 0.35),
+                ),
+                GestureDetector(
+                  onTap: () => Get.toNamed(Routes.settings),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    child: Icon(
+                      FLucideIcons.settings,
+                      size: 18,
+                      color: theme.colors.foreground,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ── 毛玻璃圆形按钮 ─────────────────────────────────────────────────────────
-
-  Widget _buildFrostedCircleBtn({
-    required FThemeData theme,
-    required VoidCallback onTap,
-    required Widget child,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: FrostedContainer(
-        width: 40,
-        height: 40,
-        blurSigma: AppTheme.frost.blurSigma,
-        backgroundColor: theme.colors.background.withValues(
-          alpha: AppTheme.frost.btnAlpha,
-        ),
-        border: Border.all(
-          color: theme.colors.border.withValues(alpha: 0.35),
-          width: AppTheme.frost.borderWidth,
-        ),
-        shape: BoxShape.circle,
-        alignment: Alignment.center,
-        child: child,
       ),
     );
   }

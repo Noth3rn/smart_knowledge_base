@@ -223,9 +223,10 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
           color: theme.colors.border.withValues(alpha: 0.35),
           width: AppTheme.frost.borderWidth,
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
+          mainAxisSize: .min,
           children: [
             _ToolbarAction(
               icon: FLucideIcons.pencil,
@@ -397,7 +398,7 @@ class _ToolbarAction extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: color),
+            Icon(icon, size: 14, color: color).paddingAll(2),
             const SizedBox(height: 3),
             Text(
               label,
