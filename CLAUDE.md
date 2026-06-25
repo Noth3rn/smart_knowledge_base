@@ -40,8 +40,9 @@ flutter build apk
 | UI 组件库 | ForUI 0.22.x | shadcn/ui 风格，平台无关，Lucide 图标 |
 | 状态管理 / 路由 / DI | GetX 4.6.6 | 三合一：`GetxController` + `Get.toNamed()` + `Get.put()/Get.find()` |
 | 非敏感 KV | GetStorage 2.1.1 | 嵌入后端偏好、自动标签开关 |
-| 本地数据库 | drift 2.34.0 (SQLite) | 类型安全 ORM，FFI 模式；代码生成需 `drift_dev` + `build_runner` |
-| 设备端嵌入 | flutter_gemma 1.1.1 + flutter_gemma_embeddings 1.0.0 | LiteRT 运行时，768 维向量，512 token 序列 |
+| 本地数据库 | drift ^2.18.0 (SQLite) | 类型安全 ORM，FFI 模式；代码生成需 `drift_dev` + `build_runner` |
+| 设备端嵌入 | flutter_gemma ^1.0.0 + flutter_gemma_embeddings ^1.0.0 | LiteRT 运行时，768 维向量，512 token 序列 |
+| 向量存储 | flutter_gemma_rag_qdrant ^1.0.0 | 与嵌入模型配套的本地向量存储 |
 | 远程嵌入降级 | dio 5.4.0 | 调用 OpenAI 兼容 `/v1/embeddings` |
 | Markdown 渲染 | flutter_markdown 0.7.0 | 笔记预览 |
 | API Key 存储 | flutter_secure_storage 9.0.0 | 仅用于 LLM API Key / HuggingFace token |
@@ -51,7 +52,7 @@ flutter build apk
 
 ### 1. UI 框架：ForUI
 
-应用使用 ForUI 作为 UI 组件库，不再依赖 Material Design。`app.dart` 在 `GetMaterialApp.builder` 中注入 `FTheme`：
+应用使用 ForUI 作为 UI 组件库。`app.dart` 在 `GetMaterialApp.builder` 中注入 `FTheme`：
 
 ```dart
 builder: (_, child) => FTheme(
@@ -60,28 +61,61 @@ builder: (_, child) => FTheme(
 ),
 ```
 
-- **颜色：** 通过 `context.theme.colors.xxx` 访问（`primary`, `secondary`, `foreground`, `mutedForeground`, `destructive` 等）
-- **字体：** `context.theme.typography.xs/sm/md/lg/xl/xl2`…（12 级 Tailwind 比例，扁平结构）
-- **图标：** `FLucideIcons`（Lucide 图标集，替代 Material `Icons`）
-- **间距/圆角：** 项目专属常量在 `lib/theme/app_theme.dart`（`AppTheme.spacing/radius/edgeInsets/constants`）
+- **色彩：** 通过 `context.theme.colors.xxx` 访问（`primary`, `primaryForeground`, `secondary`, `secondaryForeground`, `foreground`, `mutedForeground`, `destructive`, `destructiveForeground`, `border` 等）
+- **字体：** `context.theme.typography.xs3/xs2/xs/sm/md/lg/xl/xl2`…（12 级 Tailwind 比例，扁平结构，无 `body`/`display` 嵌套）
+- **图标：** `FLucideIcons`（Lucide 图标集，如 `FLucideIcons.plus`, `FLucideIcons.search`, `FLucideIcons.trash`, `FLucideIcons.pencil`, `FLucideIcons.chevronRight`, `FLucideIcons.x`）
+- **间距/圆角/常量：** `lib/theme/app_theme.dart` — `AppTheme.spacing/radius/edgeInsets/constants`
 
 ### 2. 页面架构模式
 
-每个页面遵循统一模式：
+每个页面遵循统一模式——StatelessWidget + GetX Controller + ForUI 组件：
+
 ```dart
 class XxxPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = Get.put(XxxController());
     final theme = context.theme;  // FThemeData
     return FScaffold(
-      header: FHeader.nested(title: ..., prefixes: [FHeaderAction.back(...)], suffixes: [...]),
-      child: Obx(() { ... }),
+      header: FHeader.nested(
+        title: const Text('页面标题'),
+        prefixes: [FHeaderAction.back(onPress: () => Get.back())],
+        suffixes: [FHeaderAction(icon: ..., onPress: ...)],
+      ),
+      child: Obx(() {
+        if (controller.isLoading) return const Center(child: FCircularProgress());
+        // ... 列表用 FTileGroup.builder + FTile
+        // ... 表单用 FTextField + FSwitch + FButton
+      }),
     );
   }
 }
 ```
 
-页面文件必须导入 `package:flutter/widgets.dart` + `package:forui/forui.dart` + `package:get/get.dart' hide ContextExtensionss`（后者消除 ForUI 与 GetX 的 `context.theme` 扩展冲突）。
+**必备导入：**
+```dart
+import 'package:flutter/widgets.dart';
+import 'package:forui/forui.dart';
+import 'package:get/get.dart' hide ContextExtensionss;  // 消除 context.theme 扩展冲突
+```
+
+**Material → ForUI 组件对照：**
+
+| Material | ForUI |
+|---|---|
+| `Scaffold` + `AppBar` | `FScaffold(header: FHeader(...))` |
+| `FScaffold(header: FHeader.nested(...))` | 带返回箭头的嵌套页 |
+| `IconButton` | `FHeaderAction`（在 header 中）/ `FButton.icon(...)`（在 body 中）|
+| `Card` + `ListTile` | `FTile`（在 `FTileGroup` 中）|
+| `ListView.builder` | `FTileGroup.builder(tileBuilder: ...)` |
+| `TextField` | `FTextField(control: .managed(...))` |
+| `FilledButton` / `TextButton` | `FButton(variant: .primary/.outline/.ghost)` |
+| `AlertDialog` + `showDialog` | `FDialog` + `showFDialog(...)`（**注意**：builder 内必须再包一层 `FTheme(data: context.theme, ...)` |
+| `SwitchListTile` | `FSwitch(label:, description:)` |
+| `SegmentedButton` | `FTabs` |
+| `Divider` | `FDivider` |
+| `Chip` | 自定义 `Container` + `BoxDecoration`（ForUI 无 Chip） |
+| `CircularProgressIndicator` | `FCircularProgress` |
+| `LinearProgressIndicator` | `FDeterminateProgress` |
 
 ### 3. 三层嵌入降级（最核心的架构决策）
 
@@ -94,22 +128,22 @@ EmbeddingService (抽象)
   └── UnavailableEmbeddingService  # 不可用占位（搜索自动退化为 SQL LIKE）
 ```
 
-应用启动时 `main.dart` → `_initEmbeddingService()` 尝试 `_tryInitLiteRt()` → `_tryInitApi()`（卫语句模式，无深层嵌套）。运行时可通过设置页切换后端，调用 `reinitEmbeddingService()` 热替换 DI 容器中的实例。
+`main.dart` 中 `_initEmbeddingService()` 按优选顺序调用 `_tryInitLiteRt()` → `_tryInitApi()`（卫语句模式，每个方法返回 `EmbeddingService?`）。设置页切换后端调用 `reinitEmbeddingService()` 热替换 DI 容器中的实例。
 
 ### 4. GetX 贯穿全栈
 
-- **DI：** 服务在 `main()` 中通过 `Get.put()` 注册（数据库单例、嵌入服务），LLM 标签服务通过 `Get.lazyPut()` 延迟初始化
-- **路由：** `app_routes.dart` 定义命名路由常量，`GetPage` 列表集中管理，跳转使用 `Get.toNamed()` 无需 `BuildContext`
+- **DI：** `main()` 中 `Get.put(AppDatabase())` 注册数据库单例，`Get.lazyPut(() => TagGenerationService())` 延迟初始化 LLM 标签服务，嵌入服务通过 `Get.put<EmbeddingService>(instance)` 注册
+- **路由：** `app_routes.dart` 中 `Routes` 抽象类集中定义路由常量 + `Routes.paramId`，`appPages` 列表管理 `GetPage`
 - **状态：** 每个 Feature 用一个 `GetxController` + `.obs` 响应式字段，Widget 用 `Obx(() => ...)` 包裹订阅部分
 
 ### 5. 数据库（drift）
 
-两张核心表在 `lib/core/database/tables/` 中定义：
+两张核心表在 `lib/core/database/tables/` （part of `AppDatabase`）：
 
-- **notes：** id (自增 PK), title (1-200 字), content (Markdown 原文), embedding (BLOB, 可为 null), embedding_backend (可为 null, "litert" 或 "api"), created_at, updated_at
-- **tags：** id (自增 PK), note_id (FK → notes.id), name (1-50 字), source (默认 "manual", 可为 "llm")
+- **notes：** id (自增 PK), title (1-200), content (文本), embedding (BLOB, 可为 null), embedding_backend (可为 null), created_at, updated_at
+- **tags：** id (自增 PK), note_id (FK → notes.id), name (1-50), source (默认 "manual")
 
-DAOs 在 `lib/core/database/daos/` 中。删除笔记时手动级联删除标签（由 DAO 处理，非 SQL ON DELETE CASCADE）。表结构变更后必须运行 `dart run build_runner build --delete-conflicting-outputs` 重新生成 `app_database.g.dart`。
+DAOs 为 `AppDatabase` 的 extension（`notes_dao.dart`, `tags_dao.dart`）。删除笔记手动级联删标签。**表结构变更后必须运行 `dart run build_runner build --delete-conflicting-outputs`。**
 
 ### 6. 搜索流程
 
@@ -122,37 +156,43 @@ DAOs 在 `lib/core/database/daos/` 中。删除笔记时手动级联删除标签
 
 ### 7. Fire-and-forget 嵌入与标签
 
-笔记保存时，嵌入计算和 LLM 标签生成不阻塞保存响应——它们以 fire-and-forget 方式触发。嵌入失败静默处理（向量字段保持 null），标签生成失败通过 `Get.snackbar` 通知可重试。
+笔记保存后异步触发 `_computeEmbedding()` 和 `_autoGenerateTags()`，不阻塞保存返回。嵌入失败静默处理；标签生成失败通过 `Get.snackbar` 通知。
 
 ### 8. 模型文件分发
 
-嵌入模型文件（~171MB `.tflite` + ~4.5MB SentencePiece `.model`）不打包进 APK。应用内提供 `ModelDownloadPage`（路由 `/model-download`）引导用户下载并缓存到 `getApplicationDocumentsDirectory()`。
+嵌入模型文件（~171MB `.tflite` + ~4.5MB SentencePiece `.model`）不打包进 APK。应用内 `ModelDownloadPage` 引导用户下载到 `getApplicationDocumentsDirectory()`。模型 URL 等常量在 `EmbeddingConstants` 中定义。
 
 ## 路由表
 
 | 路由 | 页面 | 说明 |
 |------|------|------|
-| `/` | NoteListPage | 首页笔记列表 |
-| `/editor` | NoteEditorPage | 新建/编辑笔记 |
-| `/detail` | NoteDetailPage | 笔记详情 + 预览 + 导出（参数 `Routes.paramId`） |
-| `/search` | SearchPage | 语义/关键词搜索 |
-| `/settings` | SettingsPage | LLM 配置、嵌入后端切换 |
-| `/model-download` | ModelDownloadPage | 下载嵌入模型，下载中阻止返回 |
+| `/` | NoteListPage | 首页笔记列表（右上角 + 新建） |
+| `/editor` | NoteEditorPage | 新建/编辑笔记，Markdown 编辑+预览双模式 |
+| `/detail` | NoteDetailPage | 笔记详情，Markdown 渲染，标签展示，导出/删除 |
+| `/search` | SearchPage | 语义搜索（优先）或关键词搜索（降级） |
+| `/settings` | SettingsPage | LLM API 配置、嵌入后端选择（FTabs）、自动标签开关 |
+| `/model-download` | ModelDownloadPage | 下载嵌入模型，下载中阻止返回（PopScope） |
+
+**路由参数：** 笔记 ID 通过 `Routes.paramId`（即 `'id'`）传递，如 `Get.toNamed(Routes.noteDetail, parameters: {Routes.paramId: '$id'})`。
 
 ## 代码风格要点
 
+需遵循 `docs/CODE_STYLE_GUIDE.md`，核心规则：
+
 - **禁止 `var`**，全部用 `final` 或显式类型
 - **命名参数构造**，禁止位置参数
-- **尾随逗号**必须加
-- **枚举独立成文件**（`lib/core/enum/`）
+- **尾随逗号**必须加（多行参数列表）
+- **枚举独立成文件** → `lib/core/enum/`
 - **公开 API 必须写 `///` dartdoc**
-- **常量统一管理**：全局键/后端名 → `EmbeddingConstants`，UI 常量 → `AppTheme.constants`
-- **标签来源**用 `TagSource` 枚举值，不要硬编码 `'manual'`/`'llm'`
-- **嵌入后端**用 `EmbeddingBackend` 枚举值，不要硬编码 `'auto'`/`'litert'`/`'api'`
+- **常量统一管理**：全局存储键/后端名 → `EmbeddingConstants`，UI 常量（阈值、topK、间距等） → `AppTheme.constants`
+- **标签来源**用 `TagSource.llm.value` / `TagSource.manual.value`，不硬编码字符串
+- **嵌入后端**用 `EmbeddingBackend.auto/litert/api.value`，不硬编码字符串
+- **async/await** 优先，禁止 `.then()` 链式调用
+- **能用 `const` 就用 `const`**
 
 ## 测试注意事项
 
-- 唯一测试 `test/widget_test.dart` 使用 `NativeDatabase.memory()` 创建内存数据库，避免文件系统依赖
-- 在 `setUp` 中用 `Get.put()` 注册测试用数据库，`tearDown` 中 `Get.reset()` 清理
-- 测试 Widget 需要包裹 `FTheme`（ForUI 主题上下文）
+- 测试文件 `test/widget_test.dart` 使用 `NativeDatabase.memory()` + `AppDatabase.forTesting(...)`
+- `setUp` 中 `Get.put()` 注册，`tearDown` 中 `Get.reset()` 清理
+- 需要 `FTheme` 上下文的 Widget 测试，使用真实的 `App` 组件（其 builder 已注入 FTheme）
 - 新增测试如需数据库访问，同样使用 `AppDatabase.forTesting(NativeDatabase.memory())`

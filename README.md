@@ -1,6 +1,6 @@
 # SmartKnowledgeBase
 
-一个基于 Flutter 的移动端个人知识管理工具，支持 Markdown 笔记编辑、设备端 AI 语义搜索和 LLM 自动打标签。
+一个基于 Flutter 的个人知识管理移动应用，支持 Markdown 笔记编辑、设备端 AI 语义搜索和 LLM 自动打标签。
 
 ## 功能
 
@@ -14,16 +14,18 @@
 
 | 层次 | 选型 |
 |------|------|
-| 框架 | Flutter 3.x |
-| 状态管理 / 路由 / DI | GetX |
-| 本地数据库 | drift (SQLite) |
+| 框架 | Flutter 3.x (Dart SDK ^3.12.0) |
+| UI 组件库 | ForUI 0.22.x — shadcn/ui 风格，Lucide 图标 |
+| 状态管理 / 路由 / DI | GetX 4.6.6 |
+| 本地数据库 | drift 2.x (SQLite) |
 | 设备端嵌入 | flutter_gemma + flutter_gemma_embeddings (LiteRT) |
 | 远程 API | dio (DeepSeek / OpenAI 兼容) |
+| Markdown 渲染 | flutter_markdown |
 | 安全存储 | flutter_secure_storage |
 
 ## 前置条件
 
-- Flutter SDK >= 3.22
+- Flutter SDK ≥ 3.44（ForUI 要求）
 - 启用 Native Assets：`flutter config --enable-native-assets`
 - Android NDK（用于 LiteRT FFI）
 
@@ -70,9 +72,11 @@ assets/models/
 ```
 lib/
 ├── main.dart                          # 入口，服务初始化
-├── app.dart                           # GetMaterialApp 配置
+├── app.dart                           # GetMaterialApp + FTheme 配置
+├── theme/
+│   └── app_theme.dart                 # 间距/圆角/边距/常量（ForUI 色彩/字体由 FThemeData 管理）
 ├── routes/
-│   └── app_routes.dart                # 路由定义
+│   └── app_routes.dart                # 路由定义 + Routes.paramId
 ├── core/
 │   ├── database/                      # drift 数据库层
 │   │   ├── app_database.dart
@@ -82,7 +86,11 @@ lib/
 │   │   ├── embedding_service.dart     # 抽象接口
 │   │   ├── litert_embedding_service.dart  # 设备端 LiteRT
 │   │   ├── api_embedding_service.dart     # 远程 API 降级
-│   │   └── unavailable_embedding_service.dart  # 兜底空操作
+│   │   ├── unavailable_embedding_service.dart  # 兜底空操作
+│   │   └── embedding_constants.dart   # 全局常量
+│   ├── enum/                          # 枚举定义
+│   │   ├── tag_source.dart            # TagSource { manual, llm }
+│   │   └── embedding_backend.dart     # EmbeddingBackend { auto, litert, api }
 │   ├── llm/
 │   │   └── tag_generation_service.dart    # LLM 标签生成
 │   └── storage/
@@ -92,7 +100,7 @@ lib/
 │   ├── note_editor/                   # 笔记编辑页（Markdown + 标签）
 │   ├── note_detail/                   # 笔记详情页
 │   ├── search/                        # 语义搜索页
-│   ├── model_download/                # 模型下载页（备用）
+│   ├── model_download/                # 模型下载页
 │   └── settings/                      # 设置页
 └── shared/
     ├── utils/
@@ -141,3 +149,5 @@ ApiEmbeddingService (远程 OpenAI 兼容 API)
   → 失败降级
 UnavailableEmbeddingService (禁用语义搜索, 仅关键词)
 ```
+
+UI 层使用 ForUI 组件库（`FScaffold`、`FHeader`、`FTextField`、`FTile`、`FButton` 等），通过 `FTheme` 注入统一的暗色主题（`FThemes.neutral.dark.touch`），所有页面使用 `context.theme` 访问色彩与字体。
