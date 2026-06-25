@@ -52,7 +52,7 @@ class SettingsController extends GetxController {
     baseUrlController.text = baseUrl ?? 'https://api.deepseek.com/v1';
 
     modelNameController.text =
-        _box.read<String>(EmbeddingConstants.keyLlmModelName) ?? 'deepseek-chat';
+        _box.read<String>(EmbeddingConstants.keyLlmModelName) ?? 'deepseek-v4-flash';
 
     _embeddingBackend.value =
         _box.read<String>(EmbeddingConstants.keyPreferredBackend) ??

@@ -119,7 +119,7 @@ lib/
 |--------|--------|------|
 | API Key | — | DeepSeek / OpenAI 等 API 密钥 |
 | Base URL | `https://api.deepseek.com/v1` | API 地址 |
-| 模型名称 | `deepseek-chat` | 使用的 LLM 模型 |
+| 模型名称 | `deepseek-v4-flash` | 使用的 LLM 模型 |
 | 自动标签 | 关闭 | 保存笔记时自动调用 LLM 生成标签 |
 
 ### 嵌入方案
