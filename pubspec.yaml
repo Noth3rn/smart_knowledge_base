@@ -1,5 +1,5 @@
 name: smart_knowledge_base
-description: "A new Flutter project."
+description: "一个可检索的个人知识管理工具。"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -35,16 +35,42 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # --- 状态管理 + 路由 + DI ---
+  get: ^4.6.6
+  get_storage: ^2.1.1
+
+  # --- 本地数据库 ---
+  drift: ^2.18.0
+  sqlite3_flutter_libs: ^0.5.0
+
+  # --- AI 嵌入与 RAG（设备端离线）---
+  flutter_gemma: ^1.0.0
+  flutter_gemma_embeddings: ^1.0.0
+  flutter_gemma_rag_qdrant: ^1.0.0
+
+  # --- 网络请求 ---
+  dio: ^5.4.0
+
+  # --- Markdown 预览 ---
+  flutter_markdown: ^0.7.0
+
+  # --- 安全存储（API Key）---
+  flutter_secure_storage: ^9.0.0
+
+  # --- 文件与分享 ---
+  path: ^1.9.0
+  path_provider: ^2.1.0
+  share_plus: ^12.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # --- 数据库代码生成 ---
+  drift_dev: ^2.18.0
+  build_runner: ^2.4.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

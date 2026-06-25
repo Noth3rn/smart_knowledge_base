@@ -1,6 +1,6 @@
 # smart_knowledge_base
 
-A new Flutter project.
+一个可检索的个人知识管理工具。
 
 ## Getting Started
 

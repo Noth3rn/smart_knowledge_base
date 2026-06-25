@@ -1,30 +1,33 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:get/get.dart';
+import 'package:drift/native.dart';
 
-import 'package:smart_knowledge_base/main.dart';
+import 'package:smart_knowledge_base/app.dart';
+import 'package:smart_knowledge_base/core/database/app_database.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  setUp(() {
+    // 使用内存数据库进行测试，避免文件系统依赖
+    Get.put<AppDatabase>(
+      AppDatabase.forTesting(NativeDatabase.memory()),
+      permanent: true,
+    );
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  tearDown(() {
+    Get.reset();
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('App renders note list page', (WidgetTester tester) async {
+    await tester.pumpWidget(const App());
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // 验证首页显示应用标题
+    expect(find.text('SmartKnowledgeBase'), findsOneWidget);
+    // 验证空状态提示存在
+    expect(find.text('还没有笔记，点击右下角创建'), findsOneWidget);
+    // 验证 FAB 存在
+    expect(find.byIcon(Icons.add), findsOneWidget);
   });
 }
