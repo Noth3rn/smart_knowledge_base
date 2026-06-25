@@ -29,9 +29,9 @@ class AppSpacing {
 class AppRadius {
   const AppRadius();
 
-  double get sm => 4;
-  double get md => 8;
-  double get lg => 12;
+  double get sm => 6;
+  double get md => 10;
+  double get lg => 14;
   double get full => 9999;
 }
 

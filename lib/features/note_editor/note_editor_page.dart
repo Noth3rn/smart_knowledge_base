@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart' show InputBorder; // FTextField border delta 需要
 import 'package:forui/forui.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart' hide ContextExtensionss;
@@ -6,237 +7,464 @@ import 'package:get/get.dart' hide ContextExtensionss;
 import '../../theme/app_theme.dart';
 import 'note_editor_controller.dart';
 
-/// 笔记编辑页——支持 Markdown 编辑与预览双模式切换。
+/// 笔记编辑页——文档风格，无传统 AppBar。
 ///
-/// 提供标题输入、标签管理、内容编辑/预览、保存等功能。
-class NoteEditorPage extends StatelessWidget {
+/// 标题/正文字段无边框无背景，与预览模式视觉一致。
+/// StatefulWidget 持有 TextEditingController，避免 Obx rebuild 重置光标。
+class NoteEditorPage extends StatefulWidget {
   const NoteEditorPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = Get.put(NoteEditorController());
+  State<NoteEditorPage> createState() => _NoteEditorPageState();
+}
 
-    // 从路由参数获取笔记 ID（编辑模式）
+class _NoteEditorPageState extends State<NoteEditorPage> {
+  late final NoteEditorController _controller;
+  late final TextEditingController _titleTec;
+  late final TextEditingController _contentTec;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = Get.put(NoteEditorController());
+    _titleTec = TextEditingController(text: _controller.titleController.value);
+    _contentTec =
+        TextEditingController(text: _controller.contentController.value);
+
     final id = Get.parameters['id'];
-    if (id != null && controller.noteId == null) {
-      controller.loadNote(int.parse(id));
+    if (id != null && _controller.noteId == null) {
+      _controller.loadNote(int.parse(id)).then((_) {
+        if (!mounted) return;
+        _titleTec.text = _controller.titleController.value;
+        _contentTec.text = _controller.contentController.value;
+      });
     }
+  }
+
+  @override
+  void dispose() {
+    _titleTec.dispose();
+    _contentTec.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = context.theme;
 
     return FScaffold(
-      header: FHeader.nested(
-        title: Text(controller.isEditing ? '编辑笔记' : '新建笔记'),
-        prefixes: [
-          FHeaderAction.back(onPress: () => Get.back()),
-        ],
-        suffixes: [
-          // 预览切换
-          Obx(() => FHeaderAction(
-                icon: Icon(
-                  controller.isPreview
-                      ? FLucideIcons.pencil
-                      : FLucideIcons.eye,
-                ),
-                onPress: () => controller.togglePreview(),
-              )),
-          // 保存
-          Obx(() {
-            if (controller.isSaving) {
-              return const Padding(
-                padding: EdgeInsets.all(12),
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: FCircularProgress(size: .sm),
-                ),
-              );
-            }
-            return FHeaderAction(
-              icon: const Icon(FLucideIcons.check),
-              onPress: () => controller.save(),
-            );
-          }),
-        ],
+      child: SafeArea(
+        child: Stack(
+          children: [
+            Obx(() => _controller.isPreview
+                ? _buildPreview(context, theme)
+                : _buildEditContent(context, theme)),
+            _buildTopBar(theme),
+          ],
+        ),
       ),
-      child: Column(
+    );
+  }
+
+  // ── 顶部浮动工具栏 ─────────────────────────────────────────────────────────
+
+  Widget _buildTopBar(FThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // 标题输入
-          Obx(() => Padding(
-                padding: AppTheme.edgeInsets.editorPadding,
-                child: FTextField(
-                  control: .managed(
-                    initial: TextEditingValue(
-                      text: controller.titleController.value,
-                    ),
-                    onChange: (v) =>
-                        controller.titleController.value = v.text,
-                  ),
-                  hint: '笔记标题',
-                  size: .lg,
-                ),
-              )),
-
-          // 标签输入区
-          Padding(
-            padding: AppTheme.edgeInsets.editorTagPadding,
-            child: _buildTagSection(context, controller),
+          _buildCircleBtn(
+            theme: theme,
+            onTap: () => Get.back(),
+            child: Icon(
+              FLucideIcons.chevronLeft,
+              size: 18,
+              color: theme.colors.foreground,
+            ),
           ),
-
-          SizedBox(height: AppTheme.spacing.sm),
-
-          // 内容区：编辑或预览
-          Expanded(
-            child: Obx(() => controller.isPreview
-                ? _buildPreview(context, controller)
-                : _buildEditor(context, controller)),
-          ),
+          _buildCapsuleGroup(theme),
         ],
       ),
     );
   }
 
-  /// 标签管理区域——已添加标签 + 新标签输入 + 自动打标签按钮。
-  Widget _buildTagSection(
-    BuildContext context,
-    NoteEditorController controller,
-  ) {
-    final theme = context.theme;
+  /// 圆形 outline 按钮（带阴影 + 半透明背景）。
+  Widget _buildCircleBtn({
+    required FThemeData theme,
+    required VoidCallback onTap,
+    required Widget child,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: theme.colors.background.withValues(alpha: 0.88),
+          border: Border.all(color: theme.colors.border),
+        ),
+        child: child,
+      ),
+    );
+  }
 
-    return Obx(() {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  /// 胶囊形 outline 按钮组（预览切换 + 保存，带阴影 + 半透明背景）。
+  Widget _buildCapsuleGroup(FThemeData theme) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: theme.colors.background.withValues(alpha: 0.88),
+        border: Border.all(color: theme.colors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // 已添加的标签
-          if (controller.tags.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: AppTheme.spacing.xs,
-                children: controller.tags.map((tag) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+          // 预览 / 编辑切换
+          Obx(() => GestureDetector(
+                onTap: () => _controller.togglePreview(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  child: Icon(
+                    _controller.isPreview
+                        ? FLucideIcons.pencil
+                        : FLucideIcons.eye,
+                    size: 18,
+                    color: theme.colors.foreground,
+                  ),
+                ),
+              )),
+
+          // 分隔线
+          Container(
+            width: 0.5,
+            height: 20,
+            color: theme.colors.border,
+          ),
+
+          // 保存 / 保存中
+          Obx(() {
+            if (_controller.isSaving) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: FCircularProgress(size: .sm),
+                ),
+              );
+            }
+            return GestureDetector(
+              onTap: () => _controller.save(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                child: Icon(
+                  FLucideIcons.check,
+                  size: 18,
+                  color: theme.colors.foreground,
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ── 无边框/无背景字段样式 ──────────────────────────────────────────────────
+
+  /// 生成无边框无背景的 FTextField 样式 delta。
+  ///
+  /// [textStyle] 覆盖输入内容字体，[hintStyle] 覆盖提示字体。
+  FTextFieldStyleDelta _bareStyle(
+    FThemeData theme, {
+    required TextStyle textStyle,
+    required TextStyle hintStyle,
+  }) => .delta(
+    // 去掉背景填充色
+    color: FVariantsValueDelta.delta([
+      FVariantValueDeltaOperation.all(null),
+    ]),
+    // 去掉所有状态下的边框
+    border: FVariantsValueDelta.delta([
+      FVariantValueDeltaOperation.all(InputBorder.none),
+    ]),
+    // 去掉内边距，让文字与周围内容对齐
+    contentPadding: const EdgeInsetsGeometryDelta.value(EdgeInsets.zero),
+    // 去掉最小高度限制
+    constraints: const BoxConstraints(),
+    // 覆盖输入文字样式
+    contentTextStyle: FVariants<
+      FTextFieldVariantConstraint,
+      FTextFieldVariant,
+      TextStyle,
+      TextStyleDelta
+    >.all(textStyle),
+    // 覆盖 hint 文字样式
+    hintTextStyle: FVariants<
+      FTextFieldVariantConstraint,
+      FTextFieldVariant,
+      TextStyle,
+      TextStyleDelta
+    >.all(hintStyle),
+  );
+
+  // ── 编辑模式 ───────────────────────────────────────────────────────────────
+
+  Widget _buildEditContent(BuildContext context, FThemeData theme) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 56, 20, 40),
+      children: [
+        // 大标题输入——与预览 xl3 bold 一致
+        FTextField(
+          control: .managed(
+            controller: _titleTec,
+            onChange: (v) => _controller.titleController.value = v.text,
+          ),
+          style: _bareStyle(
+            theme,
+            textStyle: theme.typography.xl3.copyWith(
+              fontWeight: FontWeight.bold,
+              height: 1.4,
+              color: theme.colors.foreground,
+            ),
+            hintStyle: theme.typography.xl3.copyWith(
+              fontWeight: FontWeight.bold,
+              height: 1.4,
+              color: theme.colors.mutedForeground,
+            ),
+          ),
+          hint: '标题',
+          size: .lg,
+          maxLines: null,
+        ),
+
+        const SizedBox(height: 12),
+
+        // 标签行
+        _buildTagsRow(context, theme),
+
+        const SizedBox(height: 8),
+        const FDivider(),
+        const SizedBox(height: 12),
+
+        // 正文输入——与预览 md 正文一致
+        FTextField(
+          control: .managed(
+            controller: _contentTec,
+            onChange: (v) => _controller.contentController.value = v.text,
+          ),
+          style: _bareStyle(
+            theme,
+            textStyle: theme.typography.md.copyWith(
+              height: 1.75,
+              color: theme.colors.foreground,
+            ),
+            hintStyle: theme.typography.md.copyWith(
+              height: 1.75,
+              color: theme.colors.mutedForeground,
+            ),
+          ),
+          hint: '开始写作...',
+          maxLines: null,
+          size: .md,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTagsRow(BuildContext context, FThemeData theme) {
+    return Obx(() {
+      return Wrap(
+        spacing: AppTheme.spacing.sm,
+        runSpacing: AppTheme.spacing.xs,
+        children: [
+          ..._controller.tags.map(
+            (tag) => GestureDetector(
+              onTap: () => _controller.removeTag(tag),
+              child: FBadge(
+                variant: .outline,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(tag),
+                    const SizedBox(width: 4),
+                    Icon(
+                      FLucideIcons.x,
+                      size: 11,
+                      color: theme.colors.mutedForeground,
                     ),
-                    decoration: BoxDecoration(
-                      color: theme.colors.secondary,
-                      borderRadius: BorderRadius.circular(
-                        AppTheme.radius.full,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          tag,
-                          style: theme.typography.xs.copyWith(
-                            color: theme.colors.secondaryForeground,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        GestureDetector(
-                          onTap: () => controller.removeTag(tag),
-                          child: Icon(
-                            FLucideIcons.x,
-                            size: 14,
-                            color: theme.colors.secondaryForeground,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                  ],
+                ),
               ),
             ),
-
-          // 添加新标签
-          Row(
-            children: [
-              Expanded(
-                child: Obx(() => FTextField(
-                      control: .managed(
-                        initial: TextEditingValue(
-                          text: controller.newTagText.value,
-                        ),
-                        onChange: (v) =>
-                            controller.newTagText.value = v.text,
-                      ),
-                      hint: '添加标签...',
-                      size: .sm,
-                      onSubmit: (v) => controller.addTag(v),
-                    )),
-              ),
-              SizedBox(width: AppTheme.spacing.sm),
-              FButton.icon(
+          ),
+          if (_controller.canGenerateTags)
+            GestureDetector(
+              onTap: _controller.isGeneratingTags
+                  ? null
+                  : () => _controller.generateTags(),
+              child: FBadge(
                 variant: .outline,
-                size: .sm,
-                onPress: () =>
-                    controller.addTag(controller.newTagText.value),
-                child: const Icon(FLucideIcons.plus, size: 18),
+                child: _controller.isGeneratingTags
+                    ? const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: FCircularProgress(size: .sm),
+                      )
+                    : const Icon(FLucideIcons.sparkles, size: 12),
               ),
-
-              // 自动打标签按钮
-              if (controller.canGenerateTags) ...[
-                SizedBox(width: AppTheme.spacing.xs),
-                FButton.icon(
-                  variant: .outline,
-                  size: .sm,
-                  onPress: controller.isGeneratingTags
-                      ? null
-                      : () => controller.generateTags(),
-                  child: controller.isGeneratingTags
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: FCircularProgress(size: .sm),
-                        )
-                      : const Icon(FLucideIcons.sparkles, size: 16),
-                ),
-              ],
-            ],
+            ),
+          GestureDetector(
+            onTap: () => _showAddTagDialog(context),
+            child: FBadge(
+              variant: .outline,
+              child: const Icon(FLucideIcons.plus, size: 12),
+            ),
           ),
         ],
       );
     });
   }
 
-  /// Markdown 编辑区。
-  Widget _buildEditor(
-    BuildContext context,
-    NoteEditorController controller,
-  ) {
-    return Obx(() => Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: FTextField(
-                control: .managed(
-                  initial: TextEditingValue(
-                    text: controller.contentController.value,
-                  ),
-                  onChange: (v) =>
-                      controller.contentController.value = v.text,
+  // ── 预览模式 ───────────────────────────────────────────────────────────────
+
+  Widget _buildPreview(BuildContext context, FThemeData theme) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 56, 20, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Obx(() => Text(
+                _controller.titleController.value.isEmpty
+                    ? '无标题'
+                    : _controller.titleController.value,
+                style: theme.typography.xl3.copyWith(
+                  fontWeight: FontWeight.bold,
+                  height: 1.4,
                 ),
-                hint: '在此输入 Markdown 内容...',
-                maxLines: null,
-                expands: true,
-                size: .md,
-              ),
-            ));
+              )),
+
+          const SizedBox(height: 12),
+
+          Obx(() {
+            final tags = _controller.tags;
+            if (tags.isEmpty) return const SizedBox.shrink();
+            return Wrap(
+              spacing: AppTheme.spacing.sm,
+              runSpacing: AppTheme.spacing.xs,
+              children: tags
+                  .map((t) => FBadge(variant: .outline, child: Text(t)))
+                  .toList(),
+            );
+          }),
+
+          const SizedBox(height: 8),
+          const FDivider(),
+          const SizedBox(height: 12),
+
+          Obx(() {
+            final content = _controller.contentController.value;
+            if (content.isEmpty) {
+              return Text(
+                '暂无内容',
+                style: theme.typography.md.copyWith(
+                  color: theme.colors.mutedForeground,
+                ),
+              );
+            }
+            return MarkdownBody(
+              data: content,
+              styleSheet: _buildMarkdownStyle(theme),
+            );
+          }),
+        ],
+      ),
+    );
   }
 
-  /// Markdown 预览区。
-  Widget _buildPreview(
-    BuildContext context,
-    NoteEditorController controller,
-  ) {
-    return Obx(() {
-      final content = controller.contentController.value;
-      if (content.isEmpty) {
-        return const Center(child: Text('暂无内容'));
-      }
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        child: Markdown(data: content),
-      );
-    });
+  // ── Markdown 样式 ──────────────────────────────────────────────────────────
+
+  MarkdownStyleSheet _buildMarkdownStyle(FThemeData theme) {
+    final base = theme.typography.md;
+    final muted = base.copyWith(color: theme.colors.mutedForeground);
+
+    return MarkdownStyleSheet(
+      p: base,
+      h1: theme.typography.xl2.copyWith(fontWeight: FontWeight.w700),
+      h2: theme.typography.xl.copyWith(fontWeight: FontWeight.w700),
+      h3: theme.typography.lg.copyWith(fontWeight: FontWeight.w600),
+      h4: theme.typography.md.copyWith(fontWeight: FontWeight.w600),
+      blockquoteDecoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(color: theme.colors.border, width: 3),
+        ),
+      ),
+      blockquotePadding: const EdgeInsets.only(left: 12),
+      code: theme.typography.sm.copyWith(
+        fontFamily: 'monospace',
+        color: theme.colors.foreground,
+        backgroundColor: theme.colors.secondary,
+      ),
+      codeblockDecoration: BoxDecoration(
+        color: theme.colors.secondary,
+        borderRadius: BorderRadius.circular(AppTheme.radius.md),
+      ),
+      listBullet: muted,
+    );
+  }
+
+  // ── 添加标签对话框 ─────────────────────────────────────────────────────────
+
+  void _showAddTagDialog(BuildContext context) {
+    String newTag = '';
+    showFDialog(
+      context: context,
+      builder: (ctx, style, animation) => FTheme(
+        data: ctx.theme,
+        child: FDialog(
+          style: style,
+          animation: animation,
+          title: const Text('添加标签'),
+          body: FTextField(
+            control: .managed(
+              initial: TextEditingValue.empty,
+              onChange: (v) => newTag = v.text,
+            ),
+            hint: '输入标签名',
+            autofocus: true,
+            onSubmit: (v) {
+              _controller.addTag(v);
+              Navigator.of(ctx).pop();
+            },
+          ),
+          actions: [
+            FButton(
+              variant: .outline,
+              size: .sm,
+              child: const Text('取消'),
+              onPress: () => Navigator.of(ctx).pop(),
+            ),
+            FButton(
+              variant: .primary,
+              size: .sm,
+              child: const Text('添加'),
+              onPress: () {
+                _controller.addTag(newTag);
+                Navigator.of(ctx).pop();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
