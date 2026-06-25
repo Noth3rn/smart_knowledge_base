@@ -59,21 +59,18 @@ Future<void> _initEmbeddingService() async {
       box.read<String>(EmbeddingConstants.keyPreferredBackend) ??
           EmbeddingBackend.auto.value;
 
-  // 尝试 LiteRT
   final litertService = await _tryInitLiteRt(preferredBackend);
   if (litertService != null) {
     Get.put<EmbeddingService>(litertService);
     return;
   }
 
-  // 尝试 API
   final apiService = await _tryInitApi(preferredBackend);
   if (apiService != null) {
     Get.put<EmbeddingService>(apiService);
     return;
   }
 
-  // 兜底
   Get.put<EmbeddingService>(UnavailableEmbeddingService());
 }
 
@@ -140,7 +137,6 @@ Future<EmbeddingService?> _tryInitApi(String preferredBackend) async {
 
     return service.isAvailable ? service : null;
   } catch (_) {
-    // API 初始化失败。
     return null;
   }
 }

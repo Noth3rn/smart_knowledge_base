@@ -90,8 +90,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // ── 顶部栏（返回按钮 + 标题淡入淡出）─────────────────────────────────────
-
   Widget _buildTopBar(FThemeData theme) {
     return Padding(
       padding: const EdgeInsets.only(top: 8, left: 12, right: 16),
@@ -122,8 +120,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  // ── 毛玻璃圆形按钮 ─────────────────────────────────────────────────────────
-
   Widget _buildFrostedCircleBtn({
     required FThemeData theme,
     required VoidCallback onTap,
@@ -148,8 +144,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
   }
-
-  // ── 内容构建方法 ───────────────────────────────────────────────────────────
 
   Widget _buildSectionHeader(FThemeData theme, String title) {
     return Padding(

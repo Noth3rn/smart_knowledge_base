@@ -67,8 +67,6 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
     );
   }
 
-  // ── 顶部浮动工具栏 ─────────────────────────────────────────────────────────
-
   Widget _buildTopBar(FThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -119,7 +117,6 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 预览 / 编辑切换
           Obx(
             () => GestureDetector(
               onTap: () => _controller.togglePreview(),
@@ -134,10 +131,9 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
             ),
           ),
 
-          // 分隔线
+
           Container(width: 0.5, height: 20, color: theme.colors.border.withValues(alpha: 0.35)),
 
-          // 保存 / 保存中
           Obx(() {
             if (_controller.isSaving) {
               return const Padding(
@@ -157,8 +153,6 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
       ),
     );
   }
-
-  // ── 无边框/无背景字段样式 ──────────────────────────────────────────────────
 
   /// 生成无边框无背景的 FTextField 样式 delta。
   ///
@@ -184,8 +178,6 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
       hintStyle,
     ),
   );
-
-  // ── 编辑模式 ───────────────────────────────────────────────────────────────
 
   Widget _buildEditContent(BuildContext context, FThemeData theme) {
     return ListView(
@@ -217,7 +209,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
 
         const SizedBox(height: 12),
 
-        // 标签行
+
         _buildTagsRow(context, theme),
 
         const SizedBox(height: 8),
@@ -277,7 +269,7 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
             ),
           ),
 
-          // 手动添加标签按钮
+
           GestureDetector(
             onTap: () => _showAddTagDialog(context),
             child: FBadge(
@@ -289,8 +281,6 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
       );
     });
   }
-
-  // ── 预览模式 ───────────────────────────────────────────────────────────────
 
   Widget _buildPreview(BuildContext context, FThemeData theme) {
     return SingleChildScrollView(
@@ -333,8 +323,6 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
     );
   }
 
-  // ── Markdown 样式 ──────────────────────────────────────────────────────────
-
   MarkdownStyleSheet _buildMarkdownStyle(FThemeData theme) {
     final base = theme.typography.md;
     final muted = base.copyWith(color: theme.colors.mutedForeground);
@@ -361,8 +349,6 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
       listBullet: muted,
     );
   }
-
-  // ── 添加标签对话框 ─────────────────────────────────────────────────────────
 
   void _showAddTagDialog(BuildContext context) {
     String newTag = '';

@@ -128,7 +128,6 @@ class NoteEditorController extends GetxController {
           _tags.add(tag);
         }
       }
-      // 更新数据库中的标签
       if (_noteId.value != null) {
         _db.addTags(_noteId.value!, generated, source: TagSource.llm.value);
       }
@@ -165,13 +164,12 @@ class NoteEditorController extends GetxController {
         noteId = await _db.insertNote(entry);
       }
 
-      // 保存手动标签
       if (_tags.isNotEmpty) {
         await _db.addTags(noteId, _tags, source: TagSource.manual.value);
       }
 
       // Phase 3 — 异步触发嵌入计算（fire-and-forget，不阻塞保存返回）
-      _computeEmbedding(noteId, title, content); // 无 await
+      _computeEmbedding(noteId, title, content);
 
       // Phase 5 — 自动打标签（如果设置中开启）
       _autoGenerateTags(title, content);
@@ -191,7 +189,6 @@ class NoteEditorController extends GetxController {
     String content,
   ) async {
     try {
-      // 检查 EmbeddingService 是否已注册且可用
       if (!Get.isRegistered<EmbeddingService>()) return;
       final embeddingService = Get.find<EmbeddingService>();
       if (!embeddingService.isAvailable) return;
@@ -202,7 +199,6 @@ class NoteEditorController extends GetxController {
 
       final vector = await embeddingService.embed(textToEmbed);
 
-      // 编码为 BLOB 兼容的字节数组并写入数据库
       final bytes = VectorUtils.encode(vector);
       await _db.updateEmbedding(
         noteId,

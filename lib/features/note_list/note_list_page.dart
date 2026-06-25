@@ -77,8 +77,6 @@ class _NoteListPageState extends State<NoteListPage> {
     );
   }
 
-  // ── 顶部栏（标题 + 操作按钮，无大胶囊背景）──────────────────────────────
-
   Widget _buildTopBar(FThemeData theme) {
     return Padding(
       padding: const EdgeInsets.only(top: 8, left: 16, right: 12),
@@ -150,8 +148,6 @@ class _NoteListPageState extends State<NoteListPage> {
     );
   }
 
-  // ── 空状态 ─────────────────────────────────────────────────────────────────
-
   Widget _buildEmptyState(FThemeData theme) {
     return Center(
       child: Column(
@@ -181,8 +177,6 @@ class _NoteListPageState extends State<NoteListPage> {
       ),
     );
   }
-
-  // ── 分组列表 ───────────────────────────────────────────────────────────────
 
   Widget _buildGroupedList(BuildContext context, FThemeData theme) {
     final groups = _controller.noteGroups;
@@ -276,8 +270,6 @@ class _NoteListPageState extends State<NoteListPage> {
                 ),
               ),
             ],
-
-            // 标签 badge 行
             Obx(() {
               final tags = _controller.tagsForNote(note.id);
               if (tags.isEmpty) return const SizedBox.shrink();
@@ -316,8 +308,6 @@ class _NoteListPageState extends State<NoteListPage> {
     );
   }
 
-  // ── FAB ────────────────────────────────────────────────────────────────────
-
   Widget _buildFrostedFab(FThemeData theme) {
     return GestureDetector(
       onTap: () async {
@@ -340,8 +330,6 @@ class _NoteListPageState extends State<NoteListPage> {
     );
   }
 
-  // ── 时间格式化 ─────────────────────────────────────────────────────────────
-
   String _formatNoteTime(DateTime dt) {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
@@ -357,8 +345,6 @@ class _NoteListPageState extends State<NoteListPage> {
     }
     return '${dt.month}月${dt.day}日';
   }
-
-  // ── 删除对话框 ─────────────────────────────────────────────────────────────
 
   void _showDeleteDialog(BuildContext context, Note note) {
     showFDialog(
@@ -392,8 +378,6 @@ class _NoteListPageState extends State<NoteListPage> {
     );
   }
 }
-
-// ── 列表项类型 ───────────────────────────────────────────────────────────────
 
 class _ListItem {
   final bool isHeader;

@@ -21,8 +21,6 @@ enum DownloadStatus {
 
 /// 模型下载控制器——使用 flutter_gemma 的 installEmbedder API 下载嵌入模型。
 class ModelDownloadController extends GetxController {
-  // ---------- 可观察状态 ----------
-
   final _status = DownloadStatus.idle.obs;
   DownloadStatus get status => _status.value;
 
@@ -40,8 +38,6 @@ class ModelDownloadController extends GetxController {
 
   final _isDownloading = false.obs;
   bool get isDownloading => _isDownloading.value;
-
-  // ---------- 输入控制器 ----------
 
   late final TextEditingController modelUrlController;
   late final TextEditingController tokenizerUrlController;
@@ -63,7 +59,6 @@ class ModelDownloadController extends GetxController {
           EmbeddingConstants.defaultTokenizerUrl,
     );
     hfTokenController = TextEditingController();
-    // 从安全存储异步恢复 Token
     _loadHfToken();
   }
 
@@ -96,12 +91,10 @@ class ModelDownloadController extends GetxController {
       return;
     }
 
-    // 持久化 URL
     final box = GetStorage();
     box.write(EmbeddingConstants.keyModelUrl, modelUrl);
     box.write(EmbeddingConstants.keyTokenizerUrl, tokenizerUrl);
 
-    // 持久化 HuggingFace Token
     if (hfToken.isNotEmpty) {
       await _secureStorage.write(key: EmbeddingConstants.keyHfToken, value: hfToken);
     }

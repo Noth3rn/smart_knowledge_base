@@ -33,8 +33,6 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  // ── 左上角返回按钮 ─────────────────────────────────────────────────────────
-
   Widget _buildBackButton(FThemeData theme) {
     return Padding(
       padding: const EdgeInsets.only(top: 8, left: 12),
@@ -62,8 +60,6 @@ class SearchPage extends StatelessWidget {
       ),
     );
   }
-
-  // ── 底部搜索栏 ─────────────────────────────────────────────────────────────
 
   Widget _buildFloatingSearchBar(
     FThemeData theme,
@@ -117,8 +113,6 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  // ── 主体内容 ───────────────────────────────────────────────────────────────
-
   Widget _buildBody(BuildContext context, NoteSearchController controller) {
     final theme = context.theme;
 
@@ -128,17 +122,14 @@ class SearchPage extends StatelessWidget {
 
     return Column(
       children: [
-        // 关键词模式提示条
         if (controller.searchMode == SearchMode.keyword)
           _buildKeywordNotice(theme),
 
-        // 筛选栏
         _buildFilterBar(theme, controller),
 
         if (!controller.hasSearched)
         _buildIdleState(theme),
 
-        // 结果列表
         if (controller.hasSearched && controller.results.isEmpty)
           _buildNoResults(theme),
 
@@ -158,8 +149,6 @@ class SearchPage extends StatelessWidget {
       ],
     );
   }
-
-  // ── 空状态 / 无结果 ───────────────────────────────────────────────────────
 
   Widget _buildIdleState(FThemeData theme) {
     return Expanded(child: Center(
@@ -232,13 +221,11 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  // ── 筛选栏 ─────────────────────────────────────────────────────────────────
-
   Widget _buildFilterBar(FThemeData theme, NoteSearchController controller) {
     return Column(
       children: [
         SizedBox(height: AppTheme.spacing.lg),
-        // 筛选条件标题行
+
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16).copyWith(top: 40),
           child: GestureDetector(
@@ -268,7 +255,7 @@ class SearchPage extends StatelessWidget {
           ),
         ),
 
-        // 展开的筛选内容
+
         Obx(() {
           if (!controller.filterExpanded) return const SizedBox.shrink();
 
@@ -276,7 +263,7 @@ class SearchPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SizedBox(height: AppTheme.spacing.md),
-              // 时间筛选
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
@@ -304,7 +291,7 @@ class SearchPage extends StatelessWidget {
                 ),
               ),
 
-              // 标签筛选
+
               if (controller.allTags.isNotEmpty) ...[
                 SizedBox(height: AppTheme.spacing.md),
                 Padding(
@@ -382,8 +369,6 @@ class SearchPage extends StatelessWidget {
     );
   }
 
-  // ── 结果卡片 ───────────────────────────────────────────────────────────────
-
   Widget _buildResultCard(
     BuildContext context,
     SearchResult result,
@@ -415,7 +400,6 @@ class SearchPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 标题行 + 相似度徽章
             Row(
               children: [
                 Expanded(
@@ -463,7 +447,7 @@ class SearchPage extends StatelessWidget {
               ),
             ],
 
-            // 标签 badge 行
+
             if (result.tags.isNotEmpty) ...[
               const SizedBox(height: 8),
               Wrap(

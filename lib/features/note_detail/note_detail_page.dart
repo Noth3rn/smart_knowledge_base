@@ -66,7 +66,6 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
 
           return Stack(
             children: [
-              // 正文可滚动区域
               Column(
                 children: [
                   Expanded(
@@ -76,7 +75,6 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // 大标题
                           Text(
                             note.title,
                             style: theme.typography.xl2.copyWith(
@@ -85,7 +83,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                             ),
                           ),
 
-                          // 时间戳
+
                           const SizedBox(height: 8),
                           Text(
                             '${_formatDateTime(note.updatedAt)} 编辑',
@@ -94,7 +92,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                             ),
                           ),
 
-                          // 标签
+
                           if (_controller.tags.isNotEmpty) ...[
                             const SizedBox(height: 14),
                             Wrap(
@@ -126,7 +124,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                             ),
                           ],
 
-                          // 分隔线
+
                           const SizedBox(height: 20),
                           Container(
                             height: 0.5,
@@ -134,7 +132,7 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Markdown 正文
+
                           if (note.content.isNotEmpty)
                             MarkdownBody(
                               data: note.content,
@@ -156,10 +154,8 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                 ],
               ),
 
-              // 顶部栏（返回 + 标题，无大胶囊背景）
               _buildTopBar(theme),
 
-              // 毛玻璃浮动底部工具栏
               _buildFloatingBottomBar(theme),
             ],
           );
@@ -167,8 +163,6 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
       ),
     );
   }
-
-  // ── 顶部栏（返回按钮 + 标题淡入淡出）─────────────────────────────────────
 
   Widget _buildTopBar(FThemeData theme) {
     return Padding(
@@ -205,8 +199,6 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
       ),
     );
   }
-
-  // ── 毛玻璃浮动底栏（缩小版按钮）─────────────────────────────────────────────
 
   Widget _buildFloatingBottomBar(FThemeData theme) {
     return Positioned(
@@ -267,8 +259,6 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
     );
   }
 
-  // ── 毛玻璃圆形按钮 ─────────────────────────────────────────────────────────
-
   Widget _buildFrostedCircleBtn({
     required FThemeData theme,
     required VoidCallback onTap,
@@ -293,8 +283,6 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
       ),
     );
   }
-
-  // ── 工具方法 ───────────────────────────────────────────────────────────────
 
   String _formatDateTime(DateTime dt) {
     final y = dt.year;

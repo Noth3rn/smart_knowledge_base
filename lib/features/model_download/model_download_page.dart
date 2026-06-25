@@ -70,7 +70,6 @@ class ModelDownloadPage extends StatelessWidget {
                 ),
               ),
             ),
-            // 下载中不显示关闭按钮
             if (!controller.isDownloading)
               _buildFrostedCircleBtn(
                 theme: theme,
@@ -134,7 +133,6 @@ class ModelDownloadPage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // 图标和说明
         Icon(
           FLucideIcons.download,
           size: 64,
@@ -168,7 +166,6 @@ class ModelDownloadPage extends StatelessWidget {
 
         SizedBox(height: AppTheme.spacing.lg),
 
-        // 模型 URL 输入
         FTextField(
           control: .managed(controller: controller.modelUrlController),
           label: const Text('模型文件 URL (.tflite)'),
@@ -180,7 +177,6 @@ class ModelDownloadPage extends StatelessWidget {
 
         SizedBox(height: AppTheme.spacing.lg),
 
-        // 分词器 URL 输入
         FTextField(
           control: .managed(controller: controller.tokenizerUrlController),
           label: const Text('分词器 URL (.model / .json)'),
@@ -192,7 +188,6 @@ class ModelDownloadPage extends StatelessWidget {
 
         SizedBox(height: AppTheme.spacing.lg),
 
-        // HuggingFace Token 输入
         FTextField(
           control: .managed(controller: controller.hfTokenController),
           label: const Text('HuggingFace Token（可选，gated 模型需要）'),
@@ -206,7 +201,6 @@ class ModelDownloadPage extends StatelessWidget {
 
         SizedBox(height: AppTheme.spacing.xl),
 
-        // 操作按钮
         FButton(
           onPress: controller.canStartDownload
               ? () => controller.startDownload()

@@ -9,7 +9,6 @@ class ExportHelper {
 
   /// 将笔记内容导出为 .md 文件并唤起系统分享。
   static Future<void> exportNote(String title, String content) async {
-    // 文件名：标题中特殊字符替换为下划线
     final safeName = title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
     final fileName = '$safeName.md';
 

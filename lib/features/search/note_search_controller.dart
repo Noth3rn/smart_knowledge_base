@@ -71,8 +71,6 @@ class NoteSearchController extends GetxController {
   final _hasSearched = false.obs;
   bool get hasSearched => _hasSearched.value;
 
-  // ── 筛选状态 ───────────────────────────────────────────────────────────────
-
   final _filterExpanded = false.obs;
   bool get filterExpanded => _filterExpanded.value;
 
@@ -111,8 +109,6 @@ class NoteSearchController extends GetxController {
     }
   }
 
-  // ── 筛选操作 ───────────────────────────────────────────────────────────────
-
   /// 切换筛选栏展开/收起。
   void toggleFilter() => _filterExpanded.toggle();
 
@@ -136,7 +132,6 @@ class NoteSearchController extends GetxController {
   void _applyFilters() {
     var filtered = _allResults.toList();
 
-    // 时间筛选
     if (_timeFilter.value != TimeFilter.none) {
       final now = DateTime.now();
       final todayStart = DateTime(now.year, now.month, now.day);
@@ -168,8 +163,6 @@ class NoteSearchController extends GetxController {
 
     _filteredResults.value = filtered;
   }
-
-  // ── 搜索逻辑 ───────────────────────────────────────────────────────────────
 
   /// 在搜索框文本变化时调用，300ms 防抖。
   void onQueryChanged(String query) {
