@@ -9,7 +9,7 @@ import '../../shared/widgets/frosted_container.dart';
 import '../../theme/app_theme.dart';
 import 'note_detail_controller.dart';
 
-/// 笔记详情页——Samsung Notes 风格。
+/// 笔记详情页。
 ///
 /// 正文顶部展示大标题，顶部标题在滚离顶部时淡出，
 /// 底部毛玻璃浮动工具栏。
