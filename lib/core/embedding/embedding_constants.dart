@@ -56,4 +56,7 @@ class EmbeddingConstants {
 
   /// 嵌入文本最大字符数（超出部分截断，避免超出模型上下文窗口）。
   static const int maxEmbeddingChars = 2048;
+
+  /// 是否已插入首次使用欢迎笔记。
+  static const String keyWelcomeNotesInserted = 'welcomeNotesInserted';
 }

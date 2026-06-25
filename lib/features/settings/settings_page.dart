@@ -3,6 +3,7 @@ import 'package:forui/forui.dart';
 import 'package:get/get.dart' hide ContextExtensionss;
 
 import '../../core/enum/embedding_backend.dart';
+import '../../shared/utils/url_launcher_helper.dart';
 import '../../shared/widgets/frosted_container.dart';
 import '../../theme/app_theme.dart';
 import 'settings_controller.dart';
@@ -256,25 +257,31 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildAboutTile(FThemeData theme) {
-    return Padding(
-      padding: AppTheme.edgeInsets.card,
-      child: Row(
-        children: [
-          const Icon(FLucideIcons.info),
-          SizedBox(width: AppTheme.spacing.md),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('SmartKnowledgeBase'),
-              Text(
-                'v1.0.0 — 个人知识管理工具',
-                style: theme.typography.sm.copyWith(
-                  color: theme.colors.mutedForeground,
+    return GestureDetector(
+      onTap: () => openUrlWithConfirm(
+        context,
+        'https://github.com/Noth3rn/smart_knowledge_base',
+      ),
+      child: Padding(
+        padding: AppTheme.edgeInsets.card,
+        child: Row(
+          children: [
+            const Icon(FLucideIcons.info),
+            SizedBox(width: AppTheme.spacing.md),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('SmartKnowledgeBase'),
+                Text(
+                  'v1.0.0 — 个人知识管理工具',
+                  style: theme.typography.sm.copyWith(
+                    color: theme.colors.mutedForeground,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

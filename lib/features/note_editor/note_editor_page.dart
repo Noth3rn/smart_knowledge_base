@@ -4,6 +4,7 @@ import 'package:forui/forui.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:get/get.dart' hide ContextExtensionss;
 
+import '../../shared/utils/url_launcher_helper.dart';
 import '../../shared/widgets/frosted_container.dart';
 import '../../theme/app_theme.dart';
 import 'note_editor_controller.dart';
@@ -316,7 +317,15 @@ class _NoteEditorPageState extends State<NoteEditorPage> {
             if (content.isEmpty) {
               return Text('暂无内容', style: theme.typography.md.copyWith(color: theme.colors.mutedForeground));
             }
-            return MarkdownBody(data: content, styleSheet: _buildMarkdownStyle(theme));
+            return MarkdownBody(
+              data: content,
+              styleSheet: _buildMarkdownStyle(theme),
+              onTapLink: (text, href, title) {
+                if (href != null) {
+                  openUrlWithConfirm(context, href);
+                }
+              },
+            );
           }),
         ],
       ),

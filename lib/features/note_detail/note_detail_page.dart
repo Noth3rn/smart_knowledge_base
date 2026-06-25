@@ -5,6 +5,7 @@ import 'package:get/get.dart' hide ContextExtensionss;
 
 import '../../routes/app_routes.dart';
 import '../../shared/utils/export_helper.dart';
+import '../../shared/utils/url_launcher_helper.dart';
 import '../../shared/widgets/frosted_container.dart';
 import '../../theme/app_theme.dart';
 import 'note_detail_controller.dart';
@@ -137,6 +138,11 @@ class _NoteDetailPageState extends State<NoteDetailPage> {
                             MarkdownBody(
                               data: note.content,
                               styleSheet: _buildMarkdownStyle(theme),
+                              onTapLink: (text, href, title) {
+                                if (href != null) {
+                                  openUrlWithConfirm(context, href);
+                                }
+                              },
                             )
                           else
                             Text(
